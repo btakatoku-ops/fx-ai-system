@@ -1,0 +1,18 @@
+{
+ "generated_at": "2026-11-06T16:01:22.894891+00:00",
+ "generated_jst": "11/07 01:01",
+ "alert": "あり",
+ "message": "FXボード 01:01　仕組みの不調：ブリーフ",
+ "ready": [],
+ "health_warn": [
+  "ブリーフ"
+ ],
+ "decision": {
+  "verdict": "wait",
+  "title": "今は建てません",
+  "lead": "今日の手仕舞いの刻限（01:00）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません",
+  "reasons": [],
+  "next_look_label": "11/09 08:45",
+  "candidates": []
+ }
+}
