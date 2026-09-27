@@ -1,0 +1,169 @@
+{
+  "_comment": [
+    "強制的な NO_TRADE の条件。点数とは別系統で、点数がいくら高くても覆せない。",
+    "資金の保全が最優先という原則を、コードの構造として表したもの。"
+  ],
+  "min_candles": {
+    "_comment": "指標の計算に足りる本数。足りなければ判定しない。",
+    "H4": 60,
+    "H1": 60,
+    "M15": 60,
+    "M5": 60
+  },
+  "spread": {
+    "_comment": "ATR に対するスプレッドの比。広すぎるときは見送る。",
+    "atr_timeframe": "M15",
+    "_atr_timeframe": "どの時間足の ATR と比べるか。**損切り幅を決めている足と同じにする。** 以前ここが M5 で、損切りは M15 の ATR で決めていた。M5 の ATR は M15 の半分ほどなので、意図の倍ほど厳しい条件になっていた。費用が見合うかは、実際に賭ける幅と比べないと判断できない。",
+    "max_ratio_of_atr": 0.25,
+    "max_pips": {
+      "default": 8.0,
+      "ZARJPY": 20.0,
+      "TRYJPY": 40.0,
+      "MXNJPY": 20.0,
+      "GBPNZD": 35.0,
+      "EURNZD": 25.0,
+      "GBPAUD": 30.0
+    }
+  },
+  "integrity": {
+    "_comment": "足の素性。本数が揃っていることと、正しい足であることは別。H1 を頼んで2時間間隔の足が240本来ても、本数だけ見れば揃って見える。",
+    "require_native_timeframe": true,
+    "min_matching_ratio": 0.8,
+    "_min_matching_ratio": "正しい間隔の足がこの割合を下回れば見送る",
+    "max_unexplained_gaps": 5,
+    "_max_unexplained_gaps": "週末の閉場で説明が付かない欠落の許容数",
+    "block_on_unclosed_last_bar": true,
+    "_block_on_unclosed_last_bar": "未確定の足を確定として扱わない。market-radar で的中率が29.6%まで落ちた原因"
+  },
+
+  "freshness": {
+    "_comment": "判断の有効期限。依存しているものの中でいちばん早く切れるものに合わせる。",
+    "analysis_ttl_seconds": 60,
+    "cache_ttl_seconds": 10,
+    "_cache_ttl_seconds": "同じ銘柄の分析を使い回す秒数。**analysis_ttl_seconds 以下にすること。** 期限切れは TTL 内でも返さないが、上限を超えた設定は意図が読めなくなる。0 にすると使い回さない",
+    "quote_max_age_seconds": 600,
+    "_quote_max_age_seconds": "足から気配値を作る供給元（mock / csv）は、原理的に「入口の足」より新しくなれない。足の区切りの分だけずれるので、最悪で入口の足2本ぶん（M5 なら600秒）古くなりうる。ティックを配信する供給元を繋いだら90秒などへ下げること。**実際より新しいふりはしない。値を緩めていること自体を、ここに残しておく。**",
+    "_note": "気配値が80秒前・上限90秒・TTL60秒なら、有効期限は残り10秒。長いほうに合わせると、根拠が失われた BUY を出し続けることになる。"
+  },
+
+  "stale_data": {
+    "_comment": "最後の足からの経過が、その時間足の何本ぶんまで許容されるか。",
+    "max_bars_behind": 3,
+    "count_market_hours_only": true,
+    "_count_market_hours_only": "**閉場していた時間を経過に数えない。** 数えると、日曜再開直後は直前のH4足が52時間前になり、許容12時間を超えて全銘柄が「古すぎ」で止まる。毎週月曜の朝に必ず壊れる道具になる。"
+  },
+
+  "day_trade": {
+    "_comment": "日計り。**翌日に持ち越さない。** 刻限までに閉じ、間に合わない場面では建てない。",
+    "_why": "刻限まで残り10分で損益比1.5を狙っても、届く前に刻限が来る。届かないと分かっている賭けを、費用を払って始めることになる。",
+    "enabled": true,
+
+    "force_exit_jst": "01:00",
+    "force_exit_jst_dst": "01:00",
+    "_force_exit": "手仕舞いの刻限（日本時間）。**FXモーニングブリーフに合わせて 01:00（2026-09-27 利用者の指示）。** 01:00 を過ぎたら、日替わり（ニューヨーク17時＝夏 06:00／冬 07:00）まで新しく建てない。刻限は『いまの取引日が始まってから最初に来るこの時刻』なので、どう設定しても日替わりは跨がない（跨ぐとスワップが付く）。以前は日替わりの手前（06:00／07:00）に置いていた。",
+
+    "min_minutes_to_exit": 90,
+    "_min_minutes_to_exit": "刻限までこれだけ残っていなければ建てない。M15 の32本＝8時間が上限なので、最低でも利確に届きうる時間を残す。",
+
+    "entry_from_jst": null,
+    "entry_until_jst": null,
+    "_entry_window": "建てる時間帯を絞りたいとき（流動性の薄い時間を避けるなど）。両方 null なら絞らない。"
+  },
+
+  "regime_strategy": {
+    "_comment": "相場つきごとに、どの戦略で判断するか。**点数とは別に決める。**",
+    "_why": "戦略が違えば向きの決め方も違う。トレンド追随は押し目を買うが、持ち合いでは同じ場面が「上限に近い＝売り」になる。同じ条件を当てはめると前提ごと間違える。",
+    "_not_a_score": "点数で表現しない。点数にすると高得点で上書きできてしまう。",
+
+    "strategies": {
+      "TREND_UP": ["trend", "momentum_flag"],
+      "TREND_DOWN": ["trend", "momentum_flag"],
+      "BREAKOUT": ["breakout", "trend"],
+      "RANGE": ["failed_breakout", "range"],
+      "LOW_VOLATILITY": ["failed_breakout", "range"],
+      "TRANSITION": [],
+      "HIGH_VOLATILITY": [],
+      "NEWS": [],
+      "NO_TRADE": []
+    },
+    "_strategies": "相場つきごとに試す戦略。**順に試して、最初に向きが出たものを採る。** 空（または null）は「対応する戦略を持っていない」で、理由つきで WAIT にする。名前は backend/app/strategies.py の REGISTRY にあるもの。知らない名前はその戦略だけ飛ばす（見送り側に倒れる）。",
+    "_order_matters": "先に置いたものが優先する。条件の厳しいほうを先に置く。BREAKOUT で breakout を trend より先に置くのは、抜けた直後は押し目ではないため。RANGE で failed_breakout を range より先に置くのは、戻された事実があるぶん根拠が一段強いため。",
+    "_more_is_not_better": "**戦略を増やせば強くなる、ということは無い。** 順に試すぶん「どれかが偶然当てはまる」回数が増える。1件あたりの期待値が負なら、件数が増えるだけ負けが増える。増やしたら必ず scripts/measure_strategies.py で1つずつ測ること。",
+    "action_when_unsupported": "WAIT",
+
+    "range": {
+      "_comment": "持ち合い・低変動での逆張り。**帯の端でだけ入る。**",
+      "_measured": "2026-09-15、実データ26銘柄・30,914回の判断で **建玉0件**。向きが出た272件のうち234件（86%）は費用が見合わず強制条件で見送り、残る38件も点数が最大63.9%で売買の水準に届かなかった。仮にその38件で建てていた場合は勝率21.1%・平均R -0.474 で、同時点のコイン投げ（28.9%・-0.276）を上回っていない（z=-0.79, p=0.427）。**効くという根拠は出ていない。** 条件や点数の区分を緩めるときは docs/backtesting.md を測り直すこと。",
+      "_why_edges_only": "真ん中で入ると、どちらへ動いても損切りが近い。端で入るから損切りが帯の外側に置けて、値幅が取れる。",
+      "max_distance_atr": 0.5,
+      "_max_distance_atr": "帯からこの距離（ATR倍）以内でなければ入らない",
+      "min_band_width_atr": 1.5,
+      "_min_band_width_atr": "支持と抵抗の幅がこれ未満なら、取れる値幅が無いので見送る",
+      "require_no_breakout": true,
+      "_require_no_breakout": "直近で帯を終値で抜けていたら、持ち合いは終わっている可能性が高いので入らない",
+      "breakout_lookback_bars": 10,
+      "_breakout_lookback_bars": "抜けを何本さかのぼって見るか（判断に使う足＝M15）",
+      "rsi_confirm": { "long_below": 45, "short_above": 55 },
+      "_rsi_confirm": "帯の端に加えて、勢いも反転側にあること。端に来ただけでは入らない"
+    },
+
+    "breakout": {
+      "_comment": "帯を抜けた側に付く。**抜けた直後だけ。伸びきってからは追わない。**",
+      "_why_not_trend": "追随は押し目で入るが、抜けは帯の外に出た直後に入る。入る場所が違うので、同じ条件では扱えない。損切りは帯の内側に置ける。",
+      "lookback_bars": 40,
+      "_lookback_bars": "帯（高値・安値）を測る本数。**抜けた足そのものは含めない**（含めると帯が抜けた先まで伸びて、抜けを判定できない）",
+      "max_bars_since_break": 3,
+      "_max_bars_since_break": "抜けてから何本以内なら入るか。出遅れて飛びつかないため",
+      "min_break_atr": 0.15,
+      "_min_break_atr": "終値が帯からこれだけ（ATR倍）外に出ていること。ひげだけの抜けを拾わない",
+      "max_extension_atr": 1.5,
+      "_max_extension_atr": "抜けた水準からこれ以上離れていたら入らない。損切りが遠くなり、損益比が壊れる",
+      "min_atr_expansion": 1.15,
+      "atr_compare_bars": 20,
+      "_min_atr_expansion": "ATR がこの倍率まで広がっていること。動きを伴わない抜けは続かない。1.0 にすると条件を使わない"
+    },
+
+    "failed_breakout": {
+      "_comment": "抜けたのに戻された側に付く。**外に出てから帯の中へ戻ったことが条件。**",
+      "_why_not_range": "持ち合いの逆張りは「端に来ただけ」で入るが、こちらは一度抜けて戻された事実がある。根拠が一段強い代わりに、場面は少ない。",
+      "lookback_bars": 40,
+      "failure_window_bars": 5,
+      "_failure_window_bars": "何本前までの抜けを「失敗」として見るか",
+      "min_break_atr": 0.15,
+      "min_return_atr": 0.1,
+      "_min_return_atr": "帯の中へこれだけ（ATR倍）戻っていること。境目に貼り付いているだけでは入らない"
+    },
+
+    "momentum_flag": {
+      "_comment": "強く動いたあとの浅い押し目で、同じ方向に付く。",
+      "_why": "追随は EMA と構造の一致を見るので、**動き出した直後で構造がまだ付いてこない場面**では向きが出ない。ここでは値幅そのものを見る。",
+      "impulse_bars": 12,
+      "min_impulse_atr": 2.0,
+      "_min_impulse_atr": "直近 impulse_bars 本で ATR のこの倍数以上動いていること",
+      "max_retrace": 0.5,
+      "_max_retrace": "動いた幅に対する戻りの割合。これより深い押しは別の場面として扱う",
+      "max_distance_ema20_atr": 0.8,
+      "_max_distance_ema20_atr": "EMA20 からこの距離（ATR倍）以内。押し目の位置であること",
+      "require_h1_agreement": true,
+      "_require_h1_agreement": "H1 の向きと逆の押し目には入らない。上位足に逆らわない"
+    }
+  },
+  "volatility": {
+    "_comment": "中央値に対する比で見る。パーセンタイルは必ず0〜1に散らばるので、異常かどうかの判定には使えない。",
+    "max_atr_ratio": 2.5,
+    "min_atr_ratio": 0.35
+  },
+  "conflict": {
+    "_comment": "H1 と H4 の向きが逆のときは見送る。",
+    "block_on_h1_h4_conflict": true,
+    "require_known_higher_bias": true,
+    "_require_known_higher_bias": "上位足の向きが UNKNOWN のときも見送る。**分からないことを「競合なし」として通してはいけない。** 通せば、上位足を確かめないまま下位足だけで建てることになる。"
+  },
+  "risk_reward": {
+    "_comment": "損切り幅を ATR から決められないときは見送る。",
+    "atr_timeframe": "M15",
+    "_atr_timeframe": "損切り幅を決める足。spread.atr_timeframe と揃えること。",
+    "require_atr": true,
+    "min_atr_value": 0.0
+  }
+}

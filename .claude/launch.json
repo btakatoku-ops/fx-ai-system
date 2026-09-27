@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fx-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "frontend"
+    },
+    {
+      "name": "fx-backend",
+      "runtimeExecutable": "../.venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "port": 8000,
+      "cwd": "backend",
+      "env": {
+        "FX_ENV": "development",
+        "FX_MARKET_DATA_PROVIDER": "csv",
+        "FX_CSV_DATA_DIR": "./data/real"
+      }
+    }
+  ]
+}

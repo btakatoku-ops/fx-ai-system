@@ -1,0 +1,39 @@
+{
+  "_comment": "相場つきの判定しきい値。コードに散らさず、ここだけに置く。",
+  "adx": {
+    "trend": 25.0,
+    "range": 20.0
+  },
+  "ema_slope": {
+    "_comment": "EMA20 の傾きを ATR で割った値。単位をそろえるため。",
+    "lookback": 5,
+    "flat": 0.05,
+    "strong": 0.25
+  },
+  "atr_percentile": {
+    "_comment": "直近 lookback 本の中での ATR の位置（0-1）。",
+    "low_volatility": 0.20,
+    "high_volatility": 0.85
+  },
+  "bollinger_width_percentile": {
+    "squeeze": 0.15,
+    "expansion": 0.85
+  },
+  "breakout": {
+    "_comment": "スクイーズ直後にバンド外へ出たら breakout とみなす。",
+    "squeeze_lookback": 10,
+    "close_outside_band": true
+  },
+  "confidence": {
+    "_comment": "0-100 の点数。確率ではない。要素ごとの配分。",
+    "weights": {
+      "ema_alignment": 25,
+      "ema_slope": 20,
+      "adx": 25,
+      "atr_percentile": 10,
+      "bollinger_width": 10,
+      "market_structure": 10
+    }
+  },
+  "news_state_default": "UNKNOWN"
+}

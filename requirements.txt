@@ -1,0 +1,10 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+pandas>=2.2
+numpy>=1.26
+SQLAlchemy>=2.0
+pytest>=8.2
+httpx>=0.27
+pypdf>=5.0          # 業者のスワップ表（PDF）の読み取り

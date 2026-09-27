@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+*.sqlite3
+*.db
+logs/*.log
+node_modules/
+.next/
+out/
+dist/
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+backtest_*.json
+data/real/
+.cache_swap*.pdf
+swap.csv
+
+# Claude Code の個人設定（起動設定 launch.json は共有してよい）
+.claude/settings.local.json
+# 画面側の環境変数
+frontend/.env*.local

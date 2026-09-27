@@ -1,0 +1,282 @@
+{
+  "_comment": [
+    "どの銘柄を支援するか。**実データから測って決める。**",
+    "決め手は費用だけ: スプレッド ÷ M15 の ATR。",
+    "強制条件の上限（filters.json の spread.max_ratio_of_atr）を",
+    "普段から超えている銘柄は、そもそも出番が来ない。",
+    "**勝てるかどうかは見ていない。それは測れていない。**",
+    "scripts/measure_pair_value.py が書き出す。手で編集しない。"
+  ],
+  "measured_at": "2026-09-20T17:59:48+09:00",
+  "timeframe": "M15",
+  "source": "data/real",
+  "spread_limit_ratio": 0.25,
+  "spread_basis": "narrow",
+  "_spread_basis": "区分は普段のスプレッドで決める。engine が普段見ているのがそれだから。広がったときの比は ratio_median_wide に別で出してある。",
+  "thresholds": {
+    "focus": 0.7,
+    "watch": 0.4
+  },
+  "pairs": {
+    "GBPJPY": {
+      "spread_pips": 1.0,
+      "spread_pips_wide": 5.0,
+      "atr_pips_median": 11.03,
+      "ratio_median": 0.0906,
+      "ratio_median_wide": 0.4531,
+      "pass_rate": 1.0,
+      "bars": 5530,
+      "tier": "focus"
+    },
+    "USDJPY": {
+      "spread_pips": 0.9,
+      "spread_pips_wide": 5.0,
+      "atr_pips_median": 7.9,
+      "ratio_median": 0.1139,
+      "ratio_median_wide": 0.6326,
+      "pass_rate": 0.9998,
+      "bars": 5512,
+      "tier": "focus"
+    },
+    "EURJPY": {
+      "spread_pips": 1.9,
+      "spread_pips_wide": 6.0,
+      "atr_pips_median": 8.03,
+      "ratio_median": 0.2366,
+      "ratio_median_wide": 0.7472,
+      "pass_rate": 0.5753,
+      "bars": 5533,
+      "tier": "watch"
+    },
+    "CHFJPY": {
+      "spread_pips": 3.2,
+      "spread_pips_wide": 20.0,
+      "atr_pips_median": 11.33,
+      "ratio_median": 0.2824,
+      "ratio_median_wide": 1.7647,
+      "pass_rate": 0.3541,
+      "bars": 5530,
+      "tier": "off"
+    },
+    "EURAUD": {
+      "spread_pips": 2.8,
+      "spread_pips_wide": 13.0,
+      "atr_pips_median": 10.26,
+      "ratio_median": 0.273,
+      "ratio_median_wide": 1.2675,
+      "pass_rate": 0.241,
+      "bars": 5536,
+      "tier": "off"
+    },
+    "CADJPY": {
+      "spread_pips": 3.1,
+      "spread_pips_wide": 11.0,
+      "atr_pips_median": 7.0,
+      "ratio_median": 0.443,
+      "ratio_median_wide": 1.5721,
+      "pass_rate": 0.1068,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "EURUSD": {
+      "spread_pips": 1.4,
+      "spread_pips_wide": 2.9,
+      "atr_pips_median": 3.63,
+      "ratio_median": 0.3858,
+      "ratio_median_wide": 0.7991,
+      "pass_rate": 0.0944,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "AUDJPY": {
+      "spread_pips": 3.2,
+      "spread_pips_wide": 8.3,
+      "atr_pips_median": 7.07,
+      "ratio_median": 0.4526,
+      "ratio_median_wide": 1.174,
+      "pass_rate": 0.0765,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "AUDCHF": {
+      "spread_pips": 2.7,
+      "spread_pips_wide": 5.0,
+      "atr_pips_median": 9.37,
+      "ratio_median": 0.2883,
+      "ratio_median_wide": 0.5338,
+      "pass_rate": 0.0372,
+      "bars": 5536,
+      "tier": "off"
+    },
+    "NZDJPY": {
+      "spread_pips": 3.6,
+      "spread_pips_wide": 11.0,
+      "atr_pips_median": 6.28,
+      "ratio_median": 0.5734,
+      "ratio_median_wide": 1.7519,
+      "pass_rate": 0.0219,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "EURCHF": {
+      "spread_pips": 2.5,
+      "spread_pips_wide": 7.0,
+      "atr_pips_median": 7.08,
+      "ratio_median": 0.353,
+      "ratio_median_wide": 0.9884,
+      "pass_rate": 0.0125,
+      "bars": 5533,
+      "tier": "off"
+    },
+    "USDCAD": {
+      "spread_pips": 3.5,
+      "spread_pips_wide": 8.6,
+      "atr_pips_median": 8.7,
+      "ratio_median": 0.4023,
+      "ratio_median_wide": 0.9885,
+      "pass_rate": 0.0101,
+      "bars": 5526,
+      "tier": "off"
+    },
+    "GBPUSD": {
+      "spread_pips": 2.8,
+      "spread_pips_wide": 2.8,
+      "atr_pips_median": 4.77,
+      "ratio_median": 0.5872,
+      "ratio_median_wide": 0.5872,
+      "pass_rate": 0.0061,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "EURNZD": {
+      "spread_pips": 6.1,
+      "spread_pips_wide": 21.0,
+      "atr_pips_median": 13.03,
+      "ratio_median": 0.4683,
+      "ratio_median_wide": 1.6122,
+      "pass_rate": 0.0043,
+      "bars": 5534,
+      "tier": "off"
+    },
+    "USDCHF": {
+      "spread_pips": 2.9,
+      "spread_pips_wide": 4.0,
+      "atr_pips_median": 4.86,
+      "ratio_median": 0.597,
+      "ratio_median_wide": 0.8234,
+      "pass_rate": 0.0038,
+      "bars": 5512,
+      "tier": "off"
+    },
+    "EURCAD": {
+      "spread_pips": 4.2,
+      "spread_pips_wide": 11.0,
+      "atr_pips_median": 8.37,
+      "ratio_median": 0.5017,
+      "ratio_median_wide": 1.3139,
+      "pass_rate": 0.0,
+      "bars": 5538,
+      "tier": "off"
+    },
+    "GBPAUD": {
+      "spread_pips": 6.0,
+      "spread_pips_wide": 27.0,
+      "atr_pips_median": 10.08,
+      "ratio_median": 0.5952,
+      "ratio_median_wide": 2.6782,
+      "pass_rate": 0.0,
+      "bars": 5533,
+      "tier": "off"
+    },
+    "AUDNZD": {
+      "spread_pips": 5.3,
+      "spread_pips_wide": 11.0,
+      "atr_pips_median": 8.59,
+      "ratio_median": 0.6171,
+      "ratio_median_wide": 1.2807,
+      "pass_rate": 0.0,
+      "bars": 5533,
+      "tier": "off"
+    },
+    "GBPNZD": {
+      "spread_pips": 10.0,
+      "spread_pips_wide": 35.0,
+      "atr_pips_median": 15.8,
+      "ratio_median": 0.6328,
+      "ratio_median_wide": 2.2148,
+      "pass_rate": 0.0,
+      "bars": 5533,
+      "tier": "off"
+    },
+    "GBPCHF": {
+      "spread_pips": 5.5,
+      "spread_pips_wide": 14.0,
+      "atr_pips_median": 8.11,
+      "ratio_median": 0.6779,
+      "ratio_median_wide": 1.7255,
+      "pass_rate": 0.0,
+      "bars": 5535,
+      "tier": "off"
+    },
+    "AUDUSD": {
+      "spread_pips": 2.6,
+      "spread_pips_wide": 2.6,
+      "atr_pips_median": 2.9,
+      "ratio_median": 0.898,
+      "ratio_median_wide": 0.898,
+      "pass_rate": 0.0,
+      "bars": 5535,
+      "tier": "off"
+    },
+    "EURGBP": {
+      "spread_pips": 3.2,
+      "spread_pips_wide": 3.2,
+      "atr_pips_median": 2.6,
+      "ratio_median": 1.2306,
+      "ratio_median_wide": 1.2306,
+      "pass_rate": 0.0,
+      "bars": 5535,
+      "tier": "off"
+    },
+    "NZDUSD": {
+      "spread_pips": 3.8,
+      "spread_pips_wide": 3.8,
+      "atr_pips_median": 2.95,
+      "ratio_median": 1.2888,
+      "ratio_median_wide": 1.2888,
+      "pass_rate": 0.0,
+      "bars": 5535,
+      "tier": "off"
+    },
+    "MXNJPY": {
+      "spread_pips": 3.0,
+      "spread_pips_wide": 3.0,
+      "atr_pips_median": 0.52,
+      "ratio_median": 5.7283,
+      "ratio_median_wide": 5.7283,
+      "pass_rate": 0.0,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "ZARJPY": {
+      "spread_pips": 14.9,
+      "spread_pips_wide": 14.9,
+      "atr_pips_median": 2.11,
+      "ratio_median": 7.0587,
+      "ratio_median_wide": 7.0587,
+      "pass_rate": 0.0,
+      "bars": 5532,
+      "tier": "off"
+    },
+    "TRYJPY": {
+      "spread_pips": 3.0,
+      "spread_pips_wide": 3.0,
+      "atr_pips_median": 0.18,
+      "ratio_median": 17.0434,
+      "ratio_median_wide": 17.0434,
+      "pass_rate": 0.0,
+      "bars": 5459,
+      "tier": "off"
+    }
+  }
+}

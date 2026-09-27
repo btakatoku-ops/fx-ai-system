@@ -1,0 +1,31 @@
+{
+  "_comment": "通貨ペアの定義。アプリ全体でここだけを参照する。ペアごとの分岐をコードに書かない。",
+  "pairs": [
+    { "symbol": "USDJPY", "base": "USD", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "EURJPY", "base": "EUR", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "GBPJPY", "base": "GBP", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "AUDJPY", "base": "AUD", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "NZDJPY", "base": "NZD", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "CADJPY", "base": "CAD", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "CHFJPY", "base": "CHF", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "ZARJPY", "base": "ZAR", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "TRYJPY", "base": "TRY", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "MXNJPY", "base": "MXN", "quote": "JPY", "pip": 0.01,   "digits": 3, "enabled": true },
+    { "symbol": "EURAUD", "base": "EUR", "quote": "AUD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "EURCAD", "base": "EUR", "quote": "CAD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "EURCHF", "base": "EUR", "quote": "CHF", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "EURGBP", "base": "EUR", "quote": "GBP", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "EURNZD", "base": "EUR", "quote": "NZD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "EURUSD", "base": "EUR", "quote": "USD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "NZDUSD", "base": "NZD", "quote": "USD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "USDCAD", "base": "USD", "quote": "CAD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "GBPAUD", "base": "GBP", "quote": "AUD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "GBPCHF", "base": "GBP", "quote": "CHF", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "GBPNZD", "base": "GBP", "quote": "NZD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "GBPUSD", "base": "GBP", "quote": "USD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "AUDCHF", "base": "AUD", "quote": "CHF", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "AUDNZD", "base": "AUD", "quote": "NZD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "AUDUSD", "base": "AUD", "quote": "USD", "pip": 0.0001, "digits": 5, "enabled": true },
+    { "symbol": "USDCHF", "base": "USD", "quote": "CHF", "pip": 0.0001, "digits": 5, "enabled": true }
+  ]
+}
