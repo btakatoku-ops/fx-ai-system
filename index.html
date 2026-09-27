@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="dark light">
+<title>FX ボード</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FX ボード">
+<style>
+:root{--bg:#0f1217;--panel:#171b22;--line:#2a313d;--tx:#e6eaf2;--tx2:#98a2b5;
+--up:#2fb37a;--down:#e0575f;--wait:#d9a13b;--none:#6b7589}
+@media (prefers-color-scheme:light){:root{--bg:#f5f7fa;--panel:#fff;--line:#dce2ea;
+--tx:#141922;--tx2:#5d6675;--up:#0b7a55;--down:#b0362a;--wait:#9a6408;--none:#7a8494}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,
+BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px
+max(40px,env(safe-area-inset-bottom))}
+h1{font-size:20px;margin:0 0 2px}.muted{color:var(--tx2);font-size:12.5px}
+.stamp{border:1px solid var(--line);border-left:3px solid var(--wait);background:var(--panel);
+padding:8px 12px;border-radius:6px;margin:10px 0 14px;font-size:13px}
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.card.excluded{border-left:4px solid var(--none)}.card.up{border-left:4px solid var(--up)}
+.card.down{border-left:4px solid var(--down)}.card.mixed{border-left:4px solid var(--wait)}
+header{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.sym{font-size:18px;font-weight:700}.px{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+.chg{font-size:12px;font-weight:500}.chg.up{color:var(--up)}.chg.down{color:var(--down)}
+.vd{font-weight:700;font-size:14px;padding:1px 9px;border-radius:4px;border:1px solid var(--line)}
+.vd.excluded{color:var(--tx2)}.vd.up{color:var(--up)}.vd.down{color:var(--down)}.vd.mixed{color:var(--wait)}
+.fs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.f{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lab{color:var(--tx2);font-size:11.5px}.mk{font-size:22px;font-weight:700;line-height:1.2}
+.tx{font-size:12.5px}.src{color:var(--tx2);font-size:11px;overflow-wrap:anywhere}
+.v-up .mk,.bs .v-up{color:var(--up)}.v-down .mk,.bs .v-down{color:var(--down)}
+.v-neutral .mk,.bs .v-neutral{color:var(--wait)}.v-none .mk,.bs .v-none{color:var(--none)}
+.brief{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px}
+.bs{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12.5px;margin-top:3px}
+.why{font-size:13px;border-radius:6px;padding:6px 10px;margin:6px 0}
+.why.ex{border:1px solid var(--none)}.why.ca{border:1px solid var(--wait)}
+ul{margin:2px 0 0;padding-left:18px}li{font-size:12.5px}
+.rbar{margin:12px 0 4px}.track{position:relative;height:14px;border-radius:7px;
+background:linear-gradient(90deg,rgba(224,87,95,.25),rgba(128,128,128,.15) 30%,rgba(128,128,128,.15) 70%,rgba(47,179,122,.25))}
+.band{position:absolute;top:3px;bottom:3px;border-radius:4px;background:rgba(74,122,212,.75)}
+.now{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;background:var(--tx);border-radius:2px}
+.ends{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;margin-top:4px;font-variant-numeric:tabular-nums}
+.lv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}
+.facts{list-style:none;padding:0;margin:8px 0 2px;font-size:13px}.facts li{font-size:13px;padding:2px 0}
+.u.ca{color:var(--wait)}.u.ex{color:var(--down)}
+footer{margin-top:18px;font-size:12px;color:var(--tx2)}
+.stamp.stale{border-left-color:var(--down)}.stamp .age{font-weight:700}
+.plan{margin:10px 0}.plan summary{cursor:pointer;list-style:none;border:1px solid #4a7ad4;
+background:rgba(74,122,212,.12);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:700}
+.plan summary::-webkit-details-marker{display:none}.plan summary .muted{display:block;font-weight:400;font-size:12px}
+.plan form{display:grid;gap:8px;margin-top:8px}.plan .dirs{display:flex;gap:8px}
+.plan button{background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:6px;
+padding:8px 14px;font:inherit;font-size:14px;cursor:pointer}
+.plan .dirs .on.up{border-color:var(--up);color:var(--up)}.plan .dirs .on.down{border-color:var(--down);color:var(--down)}
+.plan .qs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.plan label{display:grid;gap:3px;color:var(--tx2);font-size:11.5px}
+.plan input{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:6px;
+padding:8px 10px;font:inherit;font-size:16px;min-width:0;font-variant-numeric:tabular-nums}
+.plan .go{justify-self:start}.plan .howto{margin:0}
+.plan .r{margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+.plan .r.ok{border-color:rgba(47,179,122,.5)}.plan .r table{border-collapse:collapse;width:100%}
+.plan .r th{text-align:left;font-weight:500;font-size:12px;padding:3px 6px 3px 0;white-space:nowrap;color:var(--tx2)}
+.plan .r td{padding:3px 0;font-variant-numeric:tabular-nums}.plan .loss{color:var(--down)}.plan .gain{color:var(--up)}
+.plan code{font-size:11px;color:var(--tx2)}
+@media (max-width:480px){.cards{grid-template-columns:1fr}}
+</style></head>
+<body data-generated="2026-10-02T16:00:27.945748+00:00" data-valid="20"><main>
+<h1>FX ボード</h1>
+<div class="stamp"><b>2026/10/03 01:00 時点の写し</b>（<span class="age">—</span>）。
+取引時間中は PC が15分ごとに作り直します。<span class="warn"></span></div>
+<div class="cards"><section class="card excluded"><header><span class="sym">GBPJPY</span><span class="vd excluded">✕ 除外</span><span class="px">208.766 <span class="chg up">+0.09%</span></span></header><div class="fs"><div class="f v-down"><span class="lab">トレンド</span><span class="mk">▼</span><span class="tx">H4 は EMA20 が EMA50 の下、H1 は EMA20 が EMA50 の下</span></div><div class="f v-up"><span class="lab">モメンタム</span><span class="mk">▲</span><span class="tx">RSI 63・MACD は0の上（どちらも上向き）</span></div><div class="f v-up"><span class="lab">ファンダ</span><span class="mk">▲</span><span class="tx">金利差キャリーは買い方向。ただしBOJ引締め・介入で上値抑制＝ファンダ内部でも綱引き</span><span class="src">出典: FXモーニングブリーフ 10/01 08:00 JST（2026-10-01）</span></div><div class="f v-fact"><span class="lab">レンジ位置（20日）</span><span class="mk">38%</span><span class="tx">中ほど</span><span class="src">上に 1.9 日分 ／ 下に 1.2 日分</span></div></div><div class="brief"><span class="lab">FXモーニングブリーフ</span> <b>■ 対立（除外・見送り）</b> <span class="muted">2026-10-01（2日前）</span><div class="bs"><span class="v-down">トレンド ▼</span> <span class="v-down">モメンタム ▼</span> <span class="v-up">ファンダ ▲</span> <span class="v-down">レンジ位置 ▼</span></div></div><div class="why ex"><b>除外の理由</b><ul><li>今日の手仕舞いの刻限（01:00）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません</li><li>テクニカルとファンダが逆を向いています（対立）</li></ul></div><details class="plan" data-pair="GBPJPY"><summary>計画を見る<span class="muted">買い／売りを選び、MT4 の売値（Bid）・買値（Ask）を入れる</span></summary><form><div class="dirs"><button type="button" class="on up" data-dir="LONG">▲ 買いで見る</button><button type="button" data-dir="SHORT">▼ 売りで見る</button></div><p class="muted howto">MT4 の「気配値表示」の<b>売値（Bid）と買値（Ask）をそのまま</b>入れてください。買い・売りどちらでも同じ2つです（買値の方が少し高い）。損切り・利確はこちらで計算します。</p><div class="qs"><label>売値（Bid）<input name="bid" inputmode="decimal" autocomplete="off" placeholder="208.766"></label><label>買値（Ask）<input name="ask" inputmode="decimal" autocomplete="off" placeholder="208.766"></label></div><button type="submit" class="go">計画を出す</button></form><div class="result" aria-live="polite"></div></details><div class="rbar"><div class="track"><span class="band" style="left:15.9%;width:26.2%"></span><span class="now" style="left:38.3%"></span></div><div class="ends"><span>206.872</span><span class="muted">帯=今日の高安 ／ 縦線=いまの値</span><span>211.812</span></div></div><div class="lv"><div><span class="lab">上の水準</span><ul><li><b>209.000</b> キリ番<span class="muted">（+0.14 日分）</span></li><li><b>209.994</b> 前日高値<span class="muted">（+0.75 日分）</span></li></ul></div><div><span class="lab">下の水準</span><ul><li><b>208.569</b> 今日の始値<span class="muted">（-0.12 日分）</span></li><li><b>208.500</b> キリ番<span class="muted">（-0.16 日分）</span></li></ul></div></div><ul class="facts"><li>今日の値幅 <b class="u ">普段の 80%</b><span class="muted">（207.658〜208.952 ／ 普段は 1.628）</span></li><li>手仕舞いの刻限 <b>10/03 01:00</b><span class="muted">（過ぎました。日替わりまで建てません）</span></li><li>指標 <span class="muted">予定表の範囲では、この銘柄に関わる重要指標はありません</span></li></ul></section><section class="card excluded"><header><span class="sym">USDJPY</span><span class="vd excluded">✕ 除外</span><span class="px">157.804 <span class="chg down">-0.16%</span></span></header><div class="fs"><div class="f v-neutral"><span class="lab">トレンド</span><span class="mk">■</span><span class="tx">H4 は EMA20 が EMA50 の上、H1 は EMA20 が EMA50 の下</span></div><div class="f v-up"><span class="lab">モメンタム</span><span class="mk">▲</span><span class="tx">RSI 59・MACD は0の上（どちらも上向き）</span></div><div class="f v-down"><span class="lab">ファンダ</span><span class="mk">▼</span><span class="tx">Fedタカ派(ドル高▲)だが、介入(160→153の実績)・BOJ引締め・円高警戒が円買い方向＝ネット▼寄り</span><span class="src">出典: FXモーニングブリーフ 10/01 08:00 JST（2026-10-01）</span></div><div class="f v-fact"><span class="lab">レンジ位置（20日）</span><span class="mk">80%</span><span class="tx">上の端に近い</span><span class="src">上に 0.9 日分 ／ 下に 3.6 日分</span></div></div><div class="brief"><span class="lab">FXモーニングブリーフ</span> <b>■ 対立（除外・見送り）</b> <span class="muted">2026-10-01（2日前）</span><div class="bs"><span class="v-up">トレンド ▲</span> <span class="v-neutral">モメンタム ■</span> <span class="v-down">ファンダ ▼</span> <span class="v-neutral">レンジ位置 ■</span></div></div><div class="why ex"><b>除外の理由</b><ul><li>今日の手仕舞いの刻限（01:00）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません</li><li>H1 と H4 の向きが逆です（上位足と下位足が競合）</li></ul></div><div class="why ca"><b>気をつけること</b><ul><li>今日の値幅は普段の 0.9 倍まで来ています</li></ul></div><details class="plan" data-pair="USDJPY"><summary>計画を見る<span class="muted">買い／売りを選び、MT4 の売値（Bid）・買値（Ask）を入れる</span></summary><form><div class="dirs"><button type="button" class="on up" data-dir="LONG">▲ 買いで見る</button><button type="button" data-dir="SHORT">▼ 売りで見る</button></div><p class="muted howto">MT4 の「気配値表示」の<b>売値（Bid）と買値（Ask）をそのまま</b>入れてください。買い・売りどちらでも同じ2つです（買値の方が少し高い）。損切り・利確はこちらで計算します。</p><div class="qs"><label>売値（Bid）<input name="bid" inputmode="decimal" autocomplete="off" placeholder="157.804"></label><label>買値（Ask）<input name="ask" inputmode="decimal" autocomplete="off" placeholder="157.804"></label></div><button type="submit" class="go">計画を出す</button></form><div class="result" aria-live="polite"></div></details><div class="rbar"><div class="track"><span class="band" style="left:65.8%;width:20.9%"></span><span class="now" style="left:80.0%"></span></div><div class="ends"><span>152.881</span><span class="muted">帯=今日の高安 ／ 縦線=いまの値</span><span>159.036</span></div></div><div class="lv"><div><span class="lab">上の水準</span><ul><li><b>158.000</b> キリ番<span class="muted">（+0.14 日分）</span></li><li><b>158.064</b> 今日の始値<span class="muted">（+0.19 日分）</span></li></ul></div><div><span class="lab">下の水準</span><ul><li><b>157.500</b> キリ番<span class="muted">（-0.22 日分）</span></li><li><b>157.215</b> 前日安値<span class="muted">（-0.43 日分）</span></li></ul></div></div><ul class="facts"><li>今日の値幅 <b class="u ca">普段の 94%</b><span class="muted">（156.933〜158.221 ／ 普段は 1.366）</span></li><li>手仕舞いの刻限 <b>10/03 01:00</b><span class="muted">（過ぎました。日替わりまで建てません）</span></li><li>指標 <span class="muted">予定表の範囲では、この銘柄に関わる重要指標はありません</span></li></ul></section></div>
+<footer>
+<p>除外の理由があれば見送りを勧めます。それ以外は材料を並べているだけで、決めるのはご自身です。材料がそろった日の成績はまだ測れていません（記録して採点中）。 建てなかった日を損とは数えません。</p>
+<p>予測ではありません。材料の向き（▲▼■）と、機械が止める理由（除外）を並べたものです。
+投資助言ではなく、このページから発注はできません。売買の判断と結果はご自身の責任です。</p>
+</footer>
+</main><script>window.SNAPS={"GBPJPY": {"pair": "GBPJPY", "generated_at": "2026-10-02T16:00:27.945748+00:00", "valid_minutes": 20, "last_bar_at": "2026-10-02T15:45:00+00:00", "reference_close": "208.766006", "atr": "0.196225", "long": {"swing": "207.658005", "barrier": "208.951996"}, "short": {"swing": "208.951996", "barrier": "208.426788"}, "instrument": {"symbol": "GBPJPY", "base": "GBP", "quote": "JPY", "pip": "0.01", "price_tick": "0.001", "contract_unit": 10000, "min_qty": 1, "qty_step": 1, "max_qty": 100, "course": "L25_10k", "verified_on": "2026-09-14"}, "account": {"balance": "1000000", "risk_pct": "1.0", "max_risk_pct": "2.0", "max_margin_pct": "20.0", "margin_rate": "0.04", "course": "L25_10k", "currency": "JPY"}, "rules": {"atr_multiple": "2.0", "min_atr_multiple": "1.0", "structure_buffer_atr": "0.25", "use_structure": true, "r_multiples": ["1.5", "2.5", "3.5"], "min_rr": "1.5", "barrier_offset_atr": "0.1"}, "costs": {"slippage_pips_per_side": "0.2", "conversion_stress": "0.01", "wide_spread": "0.05", "max_spread_x_wide": "3", "max_gap_atr": "3"}, "board": {"excluded": true, "reasons": ["今日の手仕舞いの刻限（01:00）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません", "テクニカルとファンダが逆を向いています（対立）"]}, "deadline": "2026-10-02T16:00:00+00:00", "next_rollover": "2026-10-02T21:00:00+00:00", "min_minutes_to_exit": 90}, "USDJPY": {"pair": "USDJPY", "generated_at": "2026-10-02T16:00:27.945748+00:00", "valid_minutes": 20, "last_bar_at": "2026-10-02T15:45:00+00:00", "reference_close": "157.804001", "atr": "0.171852", "long": {"swing": "157.406006", "barrier": "158.220993"}, "short": {"swing": "157.802002", "barrier": "157.673393"}, "instrument": {"symbol": "USDJPY", "base": "USD", "quote": "JPY", "pip": "0.01", "price_tick": "0.001", "contract_unit": 10000, "min_qty": 1, "qty_step": 1, "max_qty": 100, "course": "L25_10k", "verified_on": "2026-09-14"}, "account": {"balance": "1000000", "risk_pct": "1.0", "max_risk_pct": "2.0", "max_margin_pct": "20.0", "margin_rate": "0.04", "course": "L25_10k", "currency": "JPY"}, "rules": {"atr_multiple": "2.0", "min_atr_multiple": "1.0", "structure_buffer_atr": "0.25", "use_structure": true, "r_multiples": ["1.5", "2.5", "3.5"], "min_rr": "1.5", "barrier_offset_atr": "0.1"}, "costs": {"slippage_pips_per_side": "0.2", "conversion_stress": "0.01", "wide_spread": "0.05", "max_spread_x_wide": "3", "max_gap_atr": "3"}, "board": {"excluded": true, "reasons": ["今日の手仕舞いの刻限（01:00）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません", "H1 と H4 の向きが逆です（上位足と下位足が競合）"]}, "deadline": "2026-10-02T16:00:00+00:00", "next_rollover": "2026-10-02T21:00:00+00:00", "min_minutes_to_exit": 90}};</script><script>/*
+ * 計画の計算（公開ページ用）。backend/app/plan_calc.py と同じ手順を、ブラウザで行う。
+ *
+ * - PC のサーバーに頼らない。公開ページ（GitHub Pages）に埋め込み、携帯でもどこでも動く。
+ * - 10進のまま計算する（BigInt の固定小数点、小数18桁）。2進の浮動小数点に直さない。
+ * - 入力は plan_snapshot.py が作ったスナップショット（候補・規則・刻限）と、
+ *   利用者が選んだ向き、MT4 の売値（Bid）・買値（Ask）。
+ * - Python 版と結果が一致することを tests/test_plancalc_js.py で確かめている。
+ *   どちらかを直したら、もう一方も直すこと。
+ * - 発注はしない。儲かる根拠ではない。
+ */
+(function (root) {
+  "use strict";
+
+  var P = 18n;
+  var S = 10n ** P;
+
+  // ---------------------------------------------------------------- 10進数
+
+  function dec(str) {
+    if (str === null || str === undefined) return null;
+    var s = String(str).trim();
+    var m = /^(-)?(\d+)(?:\.(\d+))?$/.exec(s);
+    if (!m) return NaN;
+    var frac = (m[3] || "").slice(0, Number(P));
+    while (frac.length < Number(P)) frac += "0";
+    var v = BigInt(m[2]) * S + BigInt(frac || "0");
+    return m[1] ? -v : v;
+  }
+  function isDec(x) { return typeof x === "bigint"; }
+  function fromInt(n) { return BigInt(n) * S; }
+  function mul(a, b) { return (a * b) / S; }
+  function div(a, b) { return (a * S) / b; }
+  function abs(a) { return a < 0n ? -a : a; }
+  function floorDiv(a, b) {          // a, b は整数（BigInt）。数学的な floor
+    var q = a / b;
+    if ((a % b !== 0n) && ((a < 0n) !== (b < 0n))) q -= 1n;
+    return q;
+  }
+  function quant(x, tick, up) {      // 呼値に量子化（up: 切り上げ / 切り下げ）
+    var n = floorDiv(x, tick);
+    if (up && n * tick !== x) n += 1n;
+    return n * tick;
+  }
+  function intUp(x) { var n = floorDiv(x, S); return n * S === x ? n : n + 1n; }
+  function intDown(x) { return floorDiv(x, S); }
+  function places(str) { var i = String(str).indexOf("."); return i < 0 ? 0 : String(str).length - i - 1; }
+  function fmt(x, nPlaces) {
+    var neg = x < 0n; var v = neg ? -x : x;
+    var ip = v / S; var fp = (v % S).toString().padStart(Number(P), "0");
+    var out = ip.toString();
+    if (nPlaces > 0) out += "." + fp.slice(0, nPlaces);
+    return (neg ? "-" : "") + out;
+  }
+  function yen(n) { return Number(n).toLocaleString("ja-JP"); }
+
+  // ---------------------------------------------------------------- 計算
+
+  function stop(code, message) { return { code: code, message: message }; }
+
+  function draft(snap, direction, bidStr, askStr, now) {
+    var ins = snap.instrument, acc = snap.account, r = snap.rules, c = snap.costs;
+    var side = direction === "LONG" ? snap.long : snap.short;
+    var bid = dec(bidStr), ask = dec(askStr);
+    var atr = dec(snap.atr), close = dec(snap.reference_close);
+    var balance = dec(acc.balance), riskPct = dec(acc.risk_pct);
+    var pip = dec(ins.pip), tick = dec(ins.price_tick);
+    var nums = [bid, ask, atr, close, balance, riskPct, pip, tick];
+    for (var k = 0; k < nums.length; k++) {
+      if (!isDec(nums[k]) || nums[k] <= 0n)
+        return { plan: null, stops: [stop("PLAN_INVALID_NUMBER", "価格・ATR・資金・リスク割合に、正の有限の数でないものがあります")] };
+    }
+    var out = [];
+    var gen = new Date(snap.generated_at);
+    if (direction !== "LONG" && direction !== "SHORT") out.push(stop("DIRECTION_UNSET", "向きが選ばれていません"));
+    if (now.getTime() >= gen.getTime() + snap.valid_minutes * 60000)
+      out.push(stop("PLAN_EXPIRED", "候補（構造・ATR）の有効期限が切れています"));
+    if (new Date(snap.last_bar_at).getTime() > gen.getTime())
+      out.push(stop("FUTURE_BAR_USED", "判定した時刻より後の足を使っています"));
+    var wide = dec(c.wide_spread), xWide = dec(c.max_spread_x_wide), gapAtr = dec(c.max_gap_atr);
+    if (bid >= ask) {
+      out.push(stop("QUOTE_INVALID", "売値（Bid）が買値（Ask）以上になっています。MT4 の気配値表示の2つの値をそのまま入れてください（買値の方が少し高い。向きに関係なく同じ）"));
+    } else if (isDec(wide) && (ask - bid) > mul(wide, xWide)) {
+      out.push(stop("QUOTE_INVALID", "売値と買値の差が、ふだんの広いときの " + c.max_spread_x_wide + " 倍を超えています。建値や利確ではなく、気配値表示の売値・買値を入れてください（指標時の拡大なら、落ち着いてから）"));
+    }
+    var mid = (bid + ask) / 2n;
+    if (abs(mid - close) >= mul(atr, gapAtr))
+      out.push(stop("QUOTE_MISMATCH", "手で入れた値が、取り込んだ足の終値から大きく離れています（別の銘柄の値を入れた疑い）"));
+    if (out.length) return { plan: null, stops: out };
+
+    var long = direction === "LONG";
+    var pricePlaces = places(ins.price_tick);
+
+    // C 実効建値（不利側）
+    var entry = long ? quant(ask, tick, true) : quant(bid, tick, false);
+
+    // D 損切り
+    var atrMul = dec(r.atr_multiple), minAtr = dec(r.min_atr_multiple), buf = dec(r.structure_buffer_atr);
+    var atrStop = long ? entry - mul(atrMul, atr) : entry + mul(atrMul, atr);
+    var sl = atrStop, basis = "ATR の " + r.atr_multiple + " 倍";
+    var swing = dec(side.swing);
+    if (r.use_structure && isDec(swing)) {
+      var s = long ? swing - mul(buf, atr) : swing + mul(buf, atr);
+      var farther = long ? s < atrStop : s > atrStop;
+      if (farther && abs(entry - s) >= mul(minAtr, atr)) {
+        sl = s; basis = long ? "直近の転換安値の外側" : "直近の転換高値の外側";
+      }
+    } else if (!isDec(swing)) {
+      basis += "（転換点なし）";
+    }
+    sl = quant(sl, tick, !long);
+    if ((long && sl >= entry) || (!long && sl <= entry) || sl <= 0n)
+      return { plan: null, stops: [stop("STOP_INVALID", "損切りが建値の反対側に来ています")] };
+    if (abs(entry - sl) < mul(minAtr, atr))
+      return { plan: null, stops: [stop("STOP_INVALID", "損切りが近すぎます（ATR の最小倍数に届きません）")] };
+
+    // F 費用込みの距離
+    var slip = mul(dec(c.slippage_pips_per_side), pip);
+    var gross = abs(entry - sl);
+    var lossDist = gross + 2n * slip;
+
+    // E 利確（R は費用込み）
+    var barrier = dec(side.barrier), offset = dec(r.barrier_offset_atr);
+    var raw = [];
+    for (var i = 0; i < r.r_multiples.length; i++) {
+      var m = dec(r.r_multiples[i]);
+      var dist = mul(m, lossDist) + 2n * slip;
+      var price = long ? entry + dist : entry - dist;
+      var capped = null;
+      if (isDec(barrier) && (long ? price > barrier : price < barrier)) {
+        price = long ? barrier - mul(offset, atr) : barrier + mul(offset, atr);
+        capped = long ? "抵抗帯" : "支持帯";
+        price = quant(price, tick, !long);
+      } else {
+        price = quant(price, tick, long);
+      }
+      if (raw.length && raw[raw.length - 1].price === price) continue;
+      raw.push({ price: price, capped: capped });
+    }
+
+    // G 円換算（決済通貨が円の銘柄だけ。それ以外は止める）
+    var stress = dec(c.conversion_stress);
+    var one = fromInt(1);
+    if (ins.quote !== acc.currency)
+      return { plan: null, stops: [stop("CONVERSION_MISSING", ins.quote + " を円に直すレートがありません。1.0 では代用しません")] };
+    var lossRate = one + stress, gainRate = one - stress;
+
+    // H 数量
+    var maxRisk = dec(acc.max_risk_pct);
+    if (riskPct > maxRisk)
+      return { plan: null, stops: [stop("RISK_ABOVE_CAP", "1回のリスク " + acc.risk_pct + "% が上限 " + acc.max_risk_pct + "% を超えています")] };
+    var riskAmount = mul(balance, riskPct) / 100n;
+    var lossPerQty = mul(lossDist * BigInt(ins.contract_unit), lossRate);
+    var qty = Number(floorDiv(div(riskAmount, lossPerQty), S));
+    qty -= qty % ins.qty_step;
+    var notes = [];
+    if (qty > ins.max_qty) {
+      qty = ins.max_qty - ins.max_qty % ins.qty_step;
+      notes.push("数量は上限 " + ins.max_qty + " までです");
+    }
+    while (qty >= ins.min_qty && intUp(lossPerQty * BigInt(qty)) * S > riskAmount) qty -= ins.qty_step;
+    if (qty < ins.min_qty)
+      return { plan: null, stops: [stop("QTY_BELOW_MIN", "許容損失 " + yen(intDown(riskAmount)) + "円 では数量" + ins.min_qty + "（" + yen(ins.contract_unit * ins.min_qty) + "通貨）も建てられません（数量1で約 " + yen(intUp(lossPerQty)) + "円 の損失）")] };
+    var units = BigInt(qty * ins.contract_unit);
+    var lossJpy = intUp(mul(lossDist * units, lossRate));
+
+    var targets = [];
+    for (var j = 0; j < raw.length; j++) {
+      var gain = (long ? raw[j].price - entry : entry - raw[j].price) - 2n * slip;
+      if (gain <= 0n) continue;
+      var net = floorDiv(div(gain, lossDist), S / 100n) * (S / 100n);
+      targets.push({
+        label: "TP" + (targets.length + 1), price: fmt(raw[j].price, pricePlaces),
+        net_rr: fmt(net, 2), profit_jpy: Number(intDown(mul(gain * units, gainRate))),
+        capped_by: raw[j].capped, _price: raw[j].price,
+      });
+    }
+    if (!targets.length)
+      return { plan: null, stops: [stop("TARGET_NO_ROOM", "利確を置ける余地がありません（帯が近すぎます）")] };
+    var firstGain = (long ? targets[0]._price - entry : entry - targets[0]._price) - 2n * slip;
+    if (div(firstGain, lossDist) < dec(r.min_rr))
+      return { plan: null, stops: [stop("NET_RR_BELOW_MIN", "費用込みの TP1 までの比が " + targets[0].net_rr + " で、下限 " + r.min_rr + " に届きません")] };
+
+    // I 証拠金
+    var mRate;
+    if (ins.base === acc.currency) mRate = one;
+    else if (ins.base + acc.currency === ins.symbol) mRate = ask;
+    else return { plan: null, stops: [stop("CONVERSION_MISSING", ins.base + " を円に直すレートがありません。1.0 では代用しません")] };
+    var margin = intUp(mul(mul(units * mRate, one + stress), dec(acc.margin_rate)));
+    var marginPct = div(margin * S * 100n, balance);
+    if (marginPct > dec(acc.max_margin_pct))
+      return { plan: null, stops: [stop("MARGIN_ABOVE_CAP", "必要証拠金（推定）が資金の " + fmt(marginPct, 1) + "% で、上限 " + acc.max_margin_pct + "% を超えます")] };
+
+    targets.forEach(function (t) { delete t._price; });
+    return {
+      plan: {
+        direction: direction, entry: fmt(entry, pricePlaces), stop: fmt(sl, pricePlaces),
+        stop_basis: basis, qty: qty, units: Number(units), loss_jpy: Number(lossJpy),
+        risk_amount_jpy: Number(intDown(riskAmount)), margin_jpy: Number(margin),
+        margin_pct: fmt(marginPct + (S / 20n), 1), targets: targets, notes: notes,
+      },
+      stops: [],
+    };
+  }
+
+  function gate(snap, now) {
+    var out = [];
+    if (snap.board.excluded) {
+      var why = snap.board.reasons.join("・") || "理由の記載なし";
+      out.push(stop("BOARD_EXCLUDED", "ボードが除外の日です（" + why + "）。向きを選んでも計画は出しません"));
+    }
+    if (snap.deadline) {
+      var dl = new Date(snap.deadline);
+      var left = (dl.getTime() - now.getTime()) / 60000;
+      var hhmm = dl.toLocaleTimeString("ja-JP", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" });
+      if (left <= 0) out.push(stop("DEADLINE", "今日の手仕舞いの刻限（" + hhmm + "）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません"));
+      else if (left < snap.min_minutes_to_exit) out.push(stop("DEADLINE", "手仕舞いの刻限まで " + Math.round(left) + " 分しかありません（" + snap.min_minutes_to_exit + " 分以上が必要）。翌日に持ち越さないため、ここでは建てません"));
+      if (dl.getTime() > new Date(snap.next_rollover).getTime())
+        out.push(stop("ROLLOVER_CROSS", "手仕舞いの刻限が日替わりを跨ぎます（スワップが付く）"));
+    }
+    var ins = snap.instrument;
+    if (!ins.verified_on || !ins.course || ins.course !== snap.account.course)
+      out.push(stop("SPEC_UNVERIFIED", "取引単位・数量の条件が、使っている口座のコースで確かめられていません"));
+    return out;
+  }
+
+  function decide(snap, direction, bid, ask, now) {
+    now = now || new Date();
+    var d = draft(snap, direction, bid, ask, now);
+    var stops = d.stops.slice();
+    gate(snap, now).forEach(function (g) {
+      if (!stops.some(function (s) { return s.code === g.code && s.message === g.message; })) stops.push(g);
+    });
+    if (stops.length || !d.plan) return { status: "NO_TRADE", stops: stops, plan: null };
+    return { status: "PLAN_OK", stops: [], plan: d.plan };
+  }
+
+  var api = { decide: decide, draft: draft, gate: gate, _dec: dec, _fmt: fmt };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.PlanCalc = api;
+})(typeof self !== "undefined" ? self : this);
+</script><script>
+(function(){
+var G=new Date(document.body.dataset.generated),MAX=Number(document.body.dataset.valid);
+function ageMin(){return Math.floor((Date.now()-G.getTime())/60000)}
+function stamp(){var a=ageMin(),el=document.querySelector('.stamp .age'),box=document.querySelector('.stamp');
+ el.textContent=a<1?'1分以内':a+'分前';
+ var w=document.querySelector('.stamp .warn');
+ if(a>=MAX){box.classList.add('stale');w.textContent='　PC からの更新が止まっているか、取引時間外です。計画は出しません（写しが'+MAX+'分より古い）。';}
+ else{box.classList.remove('stale');w.textContent='';}}
+stamp();setInterval(stamp,30000);
+setInterval(function(){if(document.hidden)return;
+ if(document.querySelector('details.plan[open]'))return;location.reload();},5*60000);
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function yen(n){return Number(n).toLocaleString('ja-JP')+'円'}
+function show(box,r){
+ if(r.status!=='PLAN_OK'){box.innerHTML='<div class="r"><b>計画を出しません</b><ul>'+r.stops.map(function(s){return'<li>'+esc(s.message)+' <code>'+esc(s.code)+'</code></li>'}).join('')+'</ul></div>';return}
+ var p=r.plan,rows='<tr><th>建値（'+(p.direction==='LONG'?'買値':'売値')+'）</th><td>'+p.entry+'</td></tr>'
+ +'<tr><th>損切り</th><td>'+p.stop+' <span class="muted">'+esc(p.stop_basis)+'</span></td></tr>';
+ p.targets.forEach(function(t){rows+='<tr><th>'+t.label+'</th><td>'+t.price+' <span class="muted">費用込み '+t.net_rr+' 倍'+(t.capped_by?'・'+esc(t.capped_by)+'の手前':'')+'</span></td></tr>'});
+ rows+='<tr><th>数量</th><td><b>'+p.qty+'</b> <span class="muted">（'+p.units.toLocaleString('ja-JP')+'通貨）</span></td></tr>'
+ +'<tr><th>損切りに当たったら</th><td class="loss">−'+yen(p.loss_jpy)+' <span class="muted">許容 '+yen(p.risk_amount_jpy)+'</span></td></tr>';
+ p.targets.forEach(function(t){rows+='<tr><th>'+t.label+' に届いたら</th><td class="gain">＋'+yen(t.profit_jpy)+'</td></tr>'});
+ rows+='<tr><th>必要証拠金（推定）</th><td>'+yen(p.margin_jpy)+' <span class="muted">資金の '+p.margin_pct+'%</span></td></tr>';
+ box.innerHTML='<div class="r ok"><b>計画</b><table>'+rows+'</table>'+(p.notes||[]).map(function(n){return'<p class="muted">'+esc(n)+'</p>'}).join('')
+ +'<p class="muted">その向きで建てるならこの幅・この数量、という算術で、儲かる根拠ではありません。滑り 片道0.2pips・円換算の余裕1%は仮定、呼値と証拠金は推定、資金・リスクは設定の既定値です。発注はしません。</p></div>';}
+document.querySelectorAll('details.plan').forEach(function(d){
+ var pair=d.dataset.pair,dir='LONG',form=d.querySelector('form'),box=d.querySelector('.result');
+ d.querySelectorAll('.dirs button').forEach(function(b){b.addEventListener('click',function(){
+  dir=b.dataset.dir;d.querySelectorAll('.dirs button').forEach(function(x){x.className=''});
+  b.className='on '+(dir==='LONG'?'up':'down');})});
+ form.addEventListener('submit',function(e){e.preventDefault();
+  var bid=form.bid.value.trim(),ask=form.ask.value.trim();
+  if(!/^\d+(\.\d+)?$/.test(bid)||!/^\d+(\.\d+)?$/.test(ask)){box.innerHTML='<div class="r">MT4 の売値（Bid）と買値（Ask）を数字で入れてください</div>';return}
+  var snap=(window.SNAPS||{})[pair];
+  if(!snap){box.innerHTML='<div class="r">この銘柄は計画の材料がありません</div>';return}
+  show(box,window.PlanCalc.decide(snap,dir,bid,ask,new Date()));});
+});
+})();
+</script></body></html>
