@@ -1,0 +1,55 @@
+{
+  "_comment": "検証の条件。ここを変えたら結果は比較できなくなる。変更は履歴に残すこと。",
+
+  "history_bars": 1200,
+  "_history_bars": "各時間足で取り寄せる足の本数。これが検証できる長さの上限になる",
+
+  "warmup_bars": 260,
+  "_warmup_bars": "指標が立ち上がるまで判定しない。EMA200 と転換点250本ぶんが要る",
+
+  "entry_timeframe": "M15",
+  "_entry_timeframe": "建玉と決済を判定する足。この足の終値で判断し、次の足の始値で入る",
+
+  "step_bars": 1,
+  "_step_bars": "何本ごとに判定するか。1なら全部の足で判定する",
+
+  "entry": {
+    "fill": "next_open",
+    "_fill": "判断した足の終値ではなく、次の足の始値で入る。終値で入れると未来を見たことになる",
+    "pay_spread_on_entry": true,
+    "_pay_spread_on_entry": "建玉時にスプレッドを全額払う。決済は仲値で測る（保守側）"
+  },
+
+  "exit": {
+    "stop_atr": 1.0,
+    "target_atr": 1.5,
+    "_atr": "損切り・利確の幅を建玉時の ATR(M15) の倍数で決める",
+    "max_hold_bars": 32,
+    "_max_hold_bars": "この本数で決着しなければ終値で手仕舞う。M15 の32本＝8時間",
+    "ambiguous_bar": "stop_first",
+    "_ambiguous_bar": "1本の足が損切りと利確の両方に触れたら、順序は分からない。損切り側を採る"
+  },
+
+  "signals": {
+    "trade_on": ["BUY", "SELL"],
+    "_trade_on": "実際に建てるシグナル",
+    "observe_on": ["WAIT", "NO_TRADE"],
+    "_observe_on": "建てないが、同じ規則で結果だけ記録して比較に使う"
+  },
+
+  "_score_bands": "**割合で切ること。** 相関もニュースも繋いだので、いまの到達しうる最大は100点（9項目すべて data_available=true）。ただし銘柄や取り込み状況によっては測れず、その回だけ満点から外れる。だから絶対点で区分を置かない。以前は絶対点の 80 を境にしていて、到達しうる最大80点と一致し、満点以外は BUY/SELL が出なくなっていた。signal_weights.json の categories と同じ割合で切る。",
+  "score_bands": [
+    { "label": "0-60%",   "min": 0.0,  "max": 59.999 },
+    { "label": "60-70%",  "min": 60.0, "max": 69.999 },
+    { "label": "70-80%",  "min": 70.0, "max": 79.999 },
+    { "label": "80-90%",  "min": 80.0, "max": 89.999 },
+    { "label": "90-100%", "min": 90.0, "max": 100.0 }
+  ],
+
+  "reporting": {
+    "min_samples": 30,
+    "_min_samples": "これに満たない区分では勝率を名乗らない。件数と区間だけ出す",
+    "confidence_z": 1.96,
+    "_confidence_z": "Wilson 区間の z。1.96 で約95%"
+  }
+}

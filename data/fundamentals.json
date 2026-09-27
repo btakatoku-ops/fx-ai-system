@@ -1,0 +1,50 @@
+{
+  "_comment": [
+    "ファンダの見立て。**このアプリは経済や政策を判断しない。使う人が入れる。**",
+    "view は up / down / neutral。source と as_of（日付）を必ず書く。",
+    "config/board.json の fundamentals_stale_days を過ぎた見立ては、一致・対立の判断に使わない。",
+    "画面の各ボードから書き換えられる（POST /api/fundamentals/{pair}）。"
+  ],
+  "views": {
+    "GBPUSD": {
+      "view": "down",
+      "note": "Fedタカ派（10月利上げ確率65%）でドル高＋英財政懸念でポンド安。両面で下",
+      "source": "FXモーニングブリーフ 09/25 08:00 JST",
+      "as_of": "2026-09-25",
+      "saved_at": "2026-09-27T13:50:24.674253+00:00",
+      "url": "https://claude.ai/artifact/9rbKPJRTZwjRV18pPne2yS"
+    },
+    "USDJPY": {
+      "view": "neutral",
+      "note": "円安地合い▲だが158+は介入警戒（レートチェック済）で相殺＝中立",
+      "source": "FXモーニングブリーフ 09/25 08:00 JST",
+      "as_of": "2026-09-25",
+      "saved_at": "2026-09-27T13:50:24.674279+00:00",
+      "url": "https://claude.ai/artifact/9rbKPJRTZwjRV18pPne2yS"
+    },
+    "GBPJPY": {
+      "view": "up",
+      "note": "金利差・円安は買い方向。だが介入警戒でクロスも上値抑制",
+      "source": "FXモーニングブリーフ 09/25 08:00 JST",
+      "as_of": "2026-09-25",
+      "saved_at": "2026-09-27T13:50:24.674292+00:00",
+      "url": "https://claude.ai/artifact/9rbKPJRTZwjRV18pPne2yS"
+    },
+    "EURUSD": {
+      "view": "down",
+      "note": "Fedタカ派（利上げ観測）でドル高＞ECB（独Ifo改善もドル高が優勢）",
+      "source": "FXモーニングブリーフ 09/25 08:00 JST",
+      "as_of": "2026-09-25",
+      "saved_at": "2026-09-27T13:50:24.674299+00:00",
+      "url": "https://claude.ai/artifact/9rbKPJRTZwjRV18pPne2yS"
+    },
+    "EURJPY": {
+      "view": "up",
+      "note": "金利差・円安は買い方向。だがEUR弱で相殺",
+      "source": "FXモーニングブリーフ 09/25 08:00 JST",
+      "as_of": "2026-09-25",
+      "saved_at": "2026-09-27T13:50:24.674305+00:00",
+      "url": "https://claude.ai/artifact/9rbKPJRTZwjRV18pPne2yS"
+    }
+  }
+}

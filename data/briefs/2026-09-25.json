@@ -1,0 +1,148 @@
+{
+  "brief_at": "2026-09-25T08:00:00+09:00",
+  "brief_date": "2026-09-25",
+  "pairs": {
+    "GBPUSD": {
+      "lean": "down",
+      "excluded": true,
+      "verdict_raw": "▼ 下方向（見送り）",
+      "summary": "方向は下だが現値が1年ダブルボトム直上＝売る位置が悪い／SL過大",
+      "signals": {
+        "trend": {
+          "view": "down",
+          "mark": "▼",
+          "text": "1.3675/1.3867からの下落継続、2ヶ月ぶり安値。主要MA下（ActionForex「bias下・目標1.3139」）"
+        },
+        "momentum": {
+          "view": "down",
+          "mark": "▼",
+          "text": "数日続落・RSI 50未満。ただしダブルボトム接近で反発余地も（DailyForex：強気H&S）"
+        },
+        "fundamentals": {
+          "view": "down",
+          "mark": "▼",
+          "text": "Fedタカ派（10月利上げ確率65%）でドル高＋英財政懸念でポンド安。両面で下"
+        },
+        "range": {
+          "view": "up",
+          "mark": "▲",
+          "text": "1.3140–1.3200の支持帯直上（≈15%）。売りには位置が悪い＝反発risk"
+        }
+      }
+    },
+    "USDJPY": {
+      "lean": "neutral",
+      "excluded": true,
+      "verdict_raw": "■ 中立 → 除外",
+      "summary": "158台で介入警戒帯。買い＝介入risk／売り＝トレンド逆行",
+      "signals": {
+        "trend": {
+          "view": "up",
+          "mark": "▲",
+          "text": "2週間で+3%超の上昇。158台で200日SMA(158.47)直下に膠着"
+        },
+        "momentum": {
+          "view": "neutral",
+          "mark": "■",
+          "text": "上値は200日SMA・50%フィボのクラスターで抑制、失速感。RSI中立圏"
+        },
+        "fundamentals": {
+          "view": "neutral",
+          "mark": "■",
+          "text": "円安地合い▲だが158+は介入警戒（レートチェック済）で相殺＝中立"
+        },
+        "range": {
+          "view": "down",
+          "mark": "▼",
+          "text": "155.35〜159.72の上寄り。50%フィボ・200日SMA直下で買い不利"
+        }
+      }
+    },
+    "GBPJPY": {
+      "lean": "conflict",
+      "excluded": true,
+      "verdict_raw": "■ 対立 → 除外",
+      "summary": "テクニカル▼（207試し）×ファンダ円安▲が逆行。発注しない",
+      "signals": {
+        "trend": {
+          "view": "down",
+          "mark": "▼",
+          "text": "211.25の下、208.86で2026年安値207.00/207.06を試す下落基調"
+        },
+        "momentum": {
+          "view": "down",
+          "mark": "▼",
+          "text": "ポンド安がクロスを押し下げ、当日−0.37%で軟調"
+        },
+        "fundamentals": {
+          "view": "up",
+          "mark": "▲",
+          "text": "金利差・円安は買い方向。だが介入警戒でクロスも上値抑制"
+        },
+        "range": {
+          "view": "down",
+          "mark": "▼",
+          "text": "207.06〜211.25の下端寄り（≈43%）、支持207を試す"
+        }
+      }
+    },
+    "EURUSD": {
+      "lean": "down",
+      "excluded": true,
+      "verdict_raw": "▼ 下方向（見送り）",
+      "summary": "方向は下だが売れる戻り位置(1.1428)に重なり無し → 見送り",
+      "signals": {
+        "trend": {
+          "view": "down",
+          "mark": "▼",
+          "text": "1.1710からの下落継続、2ヶ月ぶり安値・4営業日続落（ActionForex「bias下・目標1.1323/53」）"
+        },
+        "momentum": {
+          "view": "down",
+          "mark": "▼",
+          "text": "RSI 50未満、下落基調継続。1.1353支持の直上で下押し余地は限定"
+        },
+        "fundamentals": {
+          "view": "down",
+          "mark": "▼",
+          "text": "Fedタカ派（利上げ観測）でドル高＞ECB（独Ifo改善もドル高が優勢）"
+        },
+        "range": {
+          "view": "down",
+          "mark": "▼",
+          "text": "1.1353〜1.1428の下寄り（≈25%）。売り方向だが支持に接近"
+        }
+      }
+    },
+    "EURJPY": {
+      "lean": "conflict",
+      "excluded": true,
+      "verdict_raw": "■ 対立 → 除外",
+      "summary": "180.00割れ（▼）×ファンダ円安（▲）が逆行",
+      "signals": {
+        "trend": {
+          "view": "down",
+          "mark": "▼",
+          "text": "181.53の下、180.00を割れ179.85・100日SMA(184.05)下（FXStreet「bearish bias」）"
+        },
+        "momentum": {
+          "view": "down",
+          "mark": "▼",
+          "text": "RSI≈40、EUR安がクロスを圧迫。上値限定で軟調"
+        },
+        "fundamentals": {
+          "view": "up",
+          "mark": "▲",
+          "text": "金利差・円安は買い方向。だがEUR弱で相殺"
+        },
+        "range": {
+          "view": "down",
+          "mark": "▼",
+          "text": "177.82〜181.53の下寄り、180.00直下"
+        }
+      }
+    }
+  },
+  "url": "https://claude.ai/artifact/9rbKPJRTZwjRV18pPne2yS",
+  "imported_at": "2026-09-27T13:50:24.681618+00:00"
+}

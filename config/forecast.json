@@ -1,0 +1,61 @@
+{
+  "_comment": [
+    "この先どれだけ動きうるかの幅。**向きは予想していない。**",
+    "実データから測った値で、scripts/measure_forecast.py が書き出す。",
+    "atr_multiple は『判断時点の ATR の何倍まで動いたか』の分位。",
+    "measured_coverage は、**決めた期間とは別の期間で確かめた**覆い率。",
+    "画面にはこの覆い率をそのまま出す。「80%のはず」ではなく",
+    "「測ったら◯%だった」と言うため。"
+  ],
+  "_not_a_forecast": "向きの予想ではない。上下どちらに動くかは何も言っていない。優位性は測れていない（docs/backtesting.md）。",
+  "measured_at": "2026-09-18T00:11:09+09:00",
+  "timeframe": "M15",
+  "quantile": 0.8,
+  "atr_period": 14,
+  "pairs": 26,
+  "source": "data/real",
+  "horizons": {
+    "1": {
+      "atr_multiple": 0.667,
+      "fitted_on": 72553,
+      "checked_on": 72564,
+      "measured_coverage": 0.804,
+      "median_ratio": 0.29
+    },
+    "2": {
+      "atr_multiple": 0.928,
+      "fitted_on": 72553,
+      "checked_on": 72564,
+      "measured_coverage": 0.8048,
+      "median_ratio": 0.41
+    },
+    "4": {
+      "atr_multiple": 1.302,
+      "fitted_on": 72553,
+      "checked_on": 72564,
+      "measured_coverage": 0.8069,
+      "median_ratio": 0.58
+    },
+    "8": {
+      "atr_multiple": 1.838,
+      "fitted_on": 72553,
+      "checked_on": 72564,
+      "measured_coverage": 0.8044,
+      "median_ratio": 0.803
+    },
+    "16": {
+      "atr_multiple": 2.609,
+      "fitted_on": 72553,
+      "checked_on": 72564,
+      "measured_coverage": 0.8017,
+      "median_ratio": 1.137
+    },
+    "32": {
+      "atr_multiple": 3.949,
+      "fitted_on": 72553,
+      "checked_on": 72564,
+      "measured_coverage": 0.8041,
+      "median_ratio": 1.719
+    }
+  }
+}

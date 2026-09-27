@@ -1,0 +1,61 @@
+{
+  "_comment": "指標の計算パラメータ。値の重複を避けるため、ここだけに書く。",
+  "ema": {
+    "fast": 20,
+    "mid": 50,
+    "slow": 200
+  },
+  "sma": {
+    "periods": [
+      20,
+      50,
+      200
+    ]
+  },
+  "rsi": {
+    "period": 14,
+    "overbought": 70,
+    "oversold": 30
+  },
+  "macd": {
+    "fast": 12,
+    "slow": 26,
+    "signal": 9
+  },
+  "stochastic": {
+    "k_period": 14,
+    "d_period": 3,
+    "overbought": 80,
+    "oversold": 20
+  },
+  "atr": {
+    "period": 14,
+    "percentile_lookback": 100
+  },
+  "bollinger": {
+    "period": 20,
+    "std": 2.0,
+    "width_lookback": 100
+  },
+  "adx": {
+    "period": 14,
+    "trend_threshold": 25,
+    "range_threshold": 20
+  },
+  "swing": {
+    "_comment": "左右に何本より高い/低いかで転換点とみなす。過剰適合を避けるため設定で持つ。lookback が短いと転換点が数個しか取れず、構造が UNKNOWN のままになる。",
+    "left": 2,
+    "right": 2,
+    "lookback": 250
+  },
+  "support_resistance": {
+    "lookback": 60,
+    "tolerance_atr": 0.5
+  },
+  "pivot": {
+    "method": "classic"
+  },
+  "previous_range": {
+    "lookback": 1
+  }
+}

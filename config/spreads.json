@@ -1,0 +1,28 @@
+{
+  "_source": "外為オンライン 店頭FX 原則固定スプレッド（2026-08-25 取得。market-radar で記録したもの）",
+  "_units": "価格の単位。円ペアは円、それ以外は該当通貨。pips ではないので注意",
+  "_note1": "「原則固定」は保証ではない。指標発表の前後、早朝、週明けの窓では広がる。",
+  "_note2": "narrow は平常時、wide は広がったときの実測値。検証では wide も試すこと。",
+  "_note3": "表に無い銘柄は default_pips を使う。推測値なので、そこの結果は割り引いて読む。",
+
+  "narrow": {
+    "USDJPY": 0.009, "EURJPY": 0.019, "GBPJPY": 0.010, "AUDJPY": 0.032,
+    "NZDJPY": 0.036, "CADJPY": 0.031, "CHFJPY": 0.032, "ZARJPY": 0.149,
+    "EURUSD": 0.00014, "GBPUSD": 0.00028, "AUDUSD": 0.00026, "NZDUSD": 0.00038,
+    "USDCAD": 0.00035, "USDCHF": 0.00029, "EURGBP": 0.00032, "EURAUD": 0.00028,
+    "EURNZD": 0.00061, "EURCAD": 0.00042, "EURCHF": 0.00025, "GBPAUD": 0.00060,
+    "GBPNZD": 0.00100, "GBPCHF": 0.00055, "AUDNZD": 0.00053, "AUDCHF": 0.00027
+  },
+
+  "wide": {
+    "USDJPY": 0.05, "EURJPY": 0.06, "GBPJPY": 0.05, "AUDJPY": 0.083,
+    "NZDJPY": 0.11, "CADJPY": 0.11, "CHFJPY": 0.20, "ZARJPY": 0.149,
+    "EURUSD": 0.00029, "GBPUSD": 0.00028, "AUDUSD": 0.00026, "NZDUSD": 0.00038,
+    "USDCAD": 0.00086, "USDCHF": 0.00040, "EURGBP": 0.00032, "EURAUD": 0.0013,
+    "EURNZD": 0.0021, "EURCAD": 0.0011, "EURCHF": 0.0007, "GBPAUD": 0.0027,
+    "GBPNZD": 0.0035, "GBPCHF": 0.0014, "AUDNZD": 0.0011, "AUDCHF": 0.0005
+  },
+
+  "default_pips": 3.0,
+  "_default_pips": "TRYJPY / MXNJPY のように表に無いもの。保守側に大きめを置く"
+}

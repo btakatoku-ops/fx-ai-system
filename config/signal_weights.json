@@ -1,0 +1,91 @@
+{
+  "_comment": "100点の配点。**持っていない材料に加点しない。** 数字はここだけに置く。",
+
+  "_revision": "2026-09-13。利用者の提案どおりの9項目に変更。従来は market_structure 15点を独立して持っていたが、提案には無いため price_action に畳んだ（HH/HL/LH/LL と BOS/CHOCH は値動きの形そのもの）。相関 5→10点、ニュース 0→10点。",
+
+  "weights": {
+    "trend": 20,
+    "momentum": 15,
+    "support_resistance": 15,
+    "volatility": 10,
+    "price_action": 10,
+    "correlation": 10,
+    "news": 10,
+    "session": 5,
+    "spread_risk": 5
+  },
+
+  "_data_available": "その項目に材料があるか。**false の項目は常に0点になる。** 配点だけ置いて材料が無い状態を、設定の側で明示しておく。",
+  "data_available": {
+    "trend": true,
+    "momentum": true,
+    "support_resistance": true,
+    "volatility": true,
+    "price_action": true,
+    "correlation": true,
+    "news": true,
+    "session": true,
+    "spread_risk": true
+  },
+
+  "_attainable": "材料がある項目の合計 = 90点。**100点は出ない。** 相関は繋いだ（DXY・米10年債・金・VIX・S&P500）。残るニュース（経済指標カレンダー）を繋いだ時点で 100点になる。銘柄によっては相関を測れる材料が無く、その銘柄だけ相関0点になる。",
+
+  "_categories": "区分の境目は「測れる配点に対する割合」で持つ。絶対点で 80 のままにすると、到達しうる最大 80点と一致してしまい、満点以外は BUY/SELL が出なくなる。割合で持てば、材料を繋いで満点が増えても意味が変わらない。",
+  "score_basis": "attainable",
+  "categories": [
+    { "min_pct": 0,  "max_pct": 59.999, "label": "NO_TRADE",          "signal": "NO_TRADE" },
+    { "min_pct": 60, "max_pct": 69.999, "label": "WATCH",             "signal": "WAIT" },
+    { "min_pct": 70, "max_pct": 79.999, "label": "SETUP",             "signal": "WAIT" },
+    { "min_pct": 80, "max_pct": 89.999, "label": "STRONG_SETUP",      "signal": "ACTIONABLE" },
+    { "min_pct": 90, "max_pct": 100,    "label": "VERY_STRONG_SETUP", "signal": "ACTIONABLE" }
+  ],
+
+  "direction": {
+    "_comment": "向きは点数と無関係に、材料の一致だけで決める。",
+    "require_h1_h4_agreement": true,
+    "min_agreement": 2
+  },
+
+  "session": {
+    "_comment": "時間帯の点。流動性の目安であって、儲かる根拠ではない。",
+    "london": { "start": 7, "end": 16 },
+    "newyork": { "start": 12, "end": 21 },
+    "tokyo": { "start": 0, "end": 9 },
+    "score": { "overlap": 5, "single": 3, "off": 1 }
+  },
+
+  "correlation": {
+    "_comment": "DXY・米10年債・Gold・VIX・S&P500 との相関。**材料は繋いである**（data/drivers、scripts/fetch_drivers.py）。",
+    "_why_zero": "材料が無いのに点が入るのは架空の加点で、点数の意味を壊す。測れないときは 0 点にする。",
+    "_three_states": "KNOWN（測れて、支えがある）/ WEAK（測ったが支えが無い → 0点。**満点には数える**）/ UNAVAILABLE（測れない → 0点で、**満点からも外す**）。0 が『中立』を意味することはない。",
+    "_neutral_score_ratio": "測れなかったときに入れる割合。**0 のままにすること。** 半分入れると、材料が無い銘柄ほど点が安定して見える。",
+    "default_state": "UNKNOWN",
+    "neutral_score_ratio": 0.0
+  },
+
+  "news": {
+    "_comment": "経済指標。カレンダーを繋いだ（Forex Factory 公開JSON）。",
+    "_scored": "点にするのは「次の重要指標までの余裕」だけ。**発表前後の停止は強制条件**で、点数では表さない（点数にすると高得点で上書きできてしまう）。設定は config/news.json。",
+    "_still_zero_when": "予定表を取り込んでいない銘柄・環境では0点。古い予定表は UNKNOWN として建てない。",
+    "default_state": "UNKNOWN",
+    "neutral_score_ratio": 0.0
+  },
+
+  "range": {
+    "_comment": "持ち合いの逆張りで、戦略に依存する4項目をどう測るか。**配点は変えない。**",
+    "_why_same_weights": "項目を配点から外すと満点（attainable）が下がり、少ない材料で売買の水準に届いてしまう。「測れない」と「この戦略には当てはまらない」は別のこと。同じ項目を、その戦略にとっての根拠で測り直す。",
+    "flat_ema_sep_atr": 1.0,
+    "_flat_ema_sep_atr": "トレンド20点の測り方。EMA20 と EMA50 の差が ATR のこの倍数まで離れていたら、向きが出ているとみなして0点。絡んでいるほど満点に近づく。",
+    "rsi_extreme": 30.0,
+    "rsi_neutral": 50.0,
+    "_rsi": "勢い15点の測り方。買いなら RSI がこの extreme まで下がっているほど満点、neutral で0点（売りは 100 から引いた値で同じに測る）。",
+    "edge_full_score_atr": 0.5,
+    "_edge_full_score_atr": "支持抵抗15点の測り方。帯の端に接していれば満点、ATR のこの倍数まで離れたら0点。**追随のときの「近すぎは抜けの危険」は当てはめない**（抜けていないことは向きの判断で確かめてある）。",
+    "_entry_conditions_live_in": "入る条件そのもの（帯の幅・距離・抜け・RSI）は config/filters.json の regime_strategy.range にある。ここにあるのは点数の付け方だけ。"
+  },
+
+  "price_action": {
+    "_comment": "値動きの形。BOS/CHOCH と HH/HL/LH/LL の一致、下位足のストキャスを含む。",
+    "_note": "従来 market_structure として独立配点していた分をここに畳んである。実データの検証では market_structure は数少ない「順方向に効いた」項目だったので、材料そのものは捨てていない。"
+  }
+}
