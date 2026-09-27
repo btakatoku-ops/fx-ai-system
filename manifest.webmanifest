@@ -1,0 +1,23 @@
+{
+  "name": "FX ボード",
+  "short_name": "FX ボード",
+  "lang": "ja",
+  "description": "朝のボードと自分向けの計画。予測ではない。発注はしない。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1217",
+  "theme_color": "#0f1217",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
