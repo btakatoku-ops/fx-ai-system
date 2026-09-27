@@ -1,0 +1,16 @@
+{
+ "generated_at": "2026-10-30T16:01:16.266666+00:00",
+ "generated_jst": "10/31 01:01",
+ "alert": "なし",
+ "message": "FXボード 01:01　見る価値のある場面はありません",
+ "ready": [],
+ "health_warn": [],
+ "decision": {
+  "verdict": "wait",
+  "title": "今は建てません",
+  "lead": "今日の手仕舞いの刻限（01:00）を過ぎています。翌日に持ち越さないため、次の取引日（日替わり後）まで建てません",
+  "reasons": [],
+  "next_look_label": "11/02 08:45",
+  "candidates": []
+ }
+}
