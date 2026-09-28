@@ -263,11 +263,14 @@ def _check_inputs(i: Inputs, now: datetime) -> List[Stop]:
         out.append(Stop("QUOTE_STALE",
                         "手で入れた bid・ask の有効期限が切れています。入れ直してください"))
     if q.bid >= q.ask:
-        out.append(Stop("QUOTE_INVALID", "bid が ask 以上になっています"))
+        out.append(Stop("QUOTE_INVALID",
+                        "売値（Bid）が買値（Ask）以上になっています。MT4 の気配値表示の"
+                        "2つの値をそのまま入れてください（買値の方が少し高い。向きに関係なく同じ）"))
     elif cost.wide_spread is not None and (q.ask - q.bid) > cost.wide_spread * cost.max_spread_x_wide:
         out.append(Stop("QUOTE_INVALID",
-                        f"スプレッド {q.ask - q.bid} が、ふだんの広いとき（{cost.wide_spread}）の"
-                        f"{cost.max_spread_x_wide} 倍を超えています（打ち間違いか、指標時の拡大）"))
+                        f"売値と買値の差 {q.ask - q.bid} が、ふだんの広いとき（{cost.wide_spread}）の"
+                        f"{cost.max_spread_x_wide} 倍を超えています。建値や利確ではなく、"
+                        f"気配値表示の売値・買値を入れてください（指標時の拡大なら、落ち着いてから）"))
     if abs(q.mid - c.reference_close) >= c.atr * cost.max_gap_atr:
         out.append(Stop("QUOTE_MISMATCH",
                         "手で入れた値が、取り込んだ足の終値から大きく離れています"
