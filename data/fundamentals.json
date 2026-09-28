@@ -23,12 +23,11 @@
       "url": "https://claude.ai/artifact/6t4b7ZTHUm9fhQrHEbZFPK"
     },
     "GBPJPY": {
-      "view": "up",
+      "view": "down",
       "note": "金利差キャリーは買い方向。ただしBOJ引締め・介入で上値抑制",
       "source": "FXモーニングブリーフ 09/28 08:00 JST",
       "as_of": "2026-09-28",
-      "saved_at": "2026-09-27T23:43:19.683197+00:00",
-      "url": "https://claude.ai/artifact/6t4b7ZTHUm9fhQrHEbZFPK"
+      "saved_at": "2026-09-28T09:54:27.874739+00:00"
     },
     "EURUSD": {
       "view": "down",

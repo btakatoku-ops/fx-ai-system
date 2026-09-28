@@ -123,14 +123,20 @@ export default function PlanPanel({
             ▼ 売りで見る
           </button>
         </div>
+        <p className="howto">
+          MT4 の「気配値表示」にある<b>売値（Bid）と買値（Ask）をそのまま</b>入れてください。
+          買い・売りどちらでも同じ2つです。買値の方が少し高く、差がスプレッドです。
+          {dir === "SHORT" ? "売りは売値（Bid）で建てる計算になります。" : "買いは買値（Ask）で建てる計算になります。"}
+          損切り・利確はこちらで計算します。
+        </p>
         <div className="quotes">
           <label>
-            MT4 の bid
+            売値（Bid）
             <input key={`b-${state.bid ?? ""}`} name="bid" inputMode="decimal" autoComplete="off"
               placeholder={hint} defaultValue={state.bid ?? ""} required />
           </label>
           <label>
-            MT4 の ask
+            買値（Ask）
             <input key={`a-${state.ask ?? ""}`} name="ask" inputMode="decimal" autoComplete="off"
               placeholder={hint} defaultValue={state.ask ?? ""} required />
           </label>
