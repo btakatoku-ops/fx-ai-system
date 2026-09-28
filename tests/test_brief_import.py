@@ -213,7 +213,8 @@ def _board(brief):
     return {
         "pair": "GBPJPY",
         "generated_at": datetime(2026, 9, 24, 0, 0, tzinfo=timezone.utc).isoformat(),
-        "facts": {"price": 209.5, "adr": 1.6, "market_open": True},
+        "facts": {"price": 209.5, "adr": 1.6, "market_open": True,
+                  "price_at": datetime(2026, 9, 23, 23, 45, tzinfo=timezone.utc).isoformat()},
         "factors": [], "brief": brief,
         "verdict": {"state": "excluded", "lean": None, "exclude": ["x"], "cautions": []},
     }

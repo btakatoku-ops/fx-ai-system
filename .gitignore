@@ -22,3 +22,10 @@ swap.csv
 .claude/settings.local.json
 # 画面側の環境変数
 frontend/.env*.local
+
+# GitHub Pages の作業場所（gh-pages ブランチ）と、手元の試し書き
+.pages/
+board_page.html
+
+# 記録簿の控え
+database/*.bak*

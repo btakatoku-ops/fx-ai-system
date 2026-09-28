@@ -94,6 +94,16 @@ def record(board: Dict[str, Any], *, database_url: str,
     from .board import fx_day_start
 
     now = datetime.fromisoformat(board["generated_at"])
+    # **その日の足がまだ無いボードは残さない。** 月曜の朝、取り込み前に作ると
+    # 金曜の終値が「今日のボード」として残り、1日1枚の決まりで上書きもされない
+    # （2026-09-28 に実際に起きた）。
+    try:
+        price_at = datetime.fromisoformat(str(f.get("price_at")))
+    except (TypeError, ValueError):
+        return False
+    if price_at < fx_day_start(now):
+        log.info("その日の足がまだ無いので、ボードを残しません %s", board.get("pair"))
+        return False
     views = {x["key"]: x["view"] for x in board.get("factors") or []}
 
     from .day_trade import exit_deadline

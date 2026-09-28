@@ -523,3 +523,38 @@ export interface BoardResponse {
 
 export const fetchBoard = (pair?: string) =>
   getJson<BoardResponse>(pair ? `/api/board?pair=${pair}` : "/api/board");
+
+// 自分向けの計画（Phase 2・新しい計算）。**向きは使う人が選ぶ。基準価格は MT4 の bid・ask。**
+// PLAN_OK でも儲かる根拠ではない。NO_TRADE は理由コードを必ず持つ。
+export interface PlanCalcTarget {
+  label: string;
+  price: string;
+  net_rr: string;
+  profit_jpy: number;
+  capped_by: string | null;
+}
+
+export interface PlanCalcResult {
+  pair: string;
+  direction: "LONG" | "SHORT";
+  board_state: string | null;
+  status: "PLAN_OK" | "NO_TRADE";
+  stops: { code: string; message: string }[];
+  disclaimers: string[];
+  quote?: { bid: string; ask: string; observed_at: string; valid_until: string };
+  assumptions?: { slippage_pips_per_side: string; conversion_stress: string };
+  plan: null | {
+    direction: string;
+    entry: string;
+    stop: string;
+    stop_basis: string;
+    qty: number;
+    units: number;
+    loss_jpy: number;
+    risk_amount_jpy: number;
+    margin_jpy: number;
+    margin_pct: string;
+    targets: PlanCalcTarget[];
+    notes: string[];
+  };
+}

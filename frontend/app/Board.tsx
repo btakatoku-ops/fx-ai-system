@@ -13,6 +13,7 @@ import type { Board, BoardBrief, BoardFactor } from "@/lib/api";
 import { fmt, nearLevels, rangeBar, usedLevel } from "@/lib/board";
 
 import FundamentalsForm from "./FundamentalsForm";
+import PlanPanel from "./PlanPanel";
 
 const VERDICT_CLASS: Record<string, string> = {
   excluded: "vd excluded",
@@ -288,6 +289,7 @@ export function BoardCard({ b }: { b: Board }) {
         </div>
       )}
 
+      <PlanPanel pair={b.pair} excluded={v.state === "excluded"} hint={fmt(f.price, b.digits)} />
       <RangeBarView b={b} />
       <Levels b={b} />
       <Facts b={b} />

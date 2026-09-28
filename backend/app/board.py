@@ -417,11 +417,17 @@ def verdict_for(cfg: TradingConfig, symbol: str, analysis, facts: Facts,
     # **強制条件で止まったものだけ**を除外の理由にする。期限切れは信号の
     # 話で、ボードの話ではない。点数の説明（「様子見の水準です」）も除外の
     # 理由ではない。
-    if getattr(analysis, "filter_blocked", False):
-        exclude.extend([r for r in (analysis.invalidation_reasons or [])
-                        if "有効期限が切れています" not in r][:2])
-
     closed = not facts.market_open
+    if getattr(analysis, "filter_blocked", False):
+        for r in analysis.invalidation_reasons or []:
+            if "有効期限が切れています" in r:
+                continue
+            # 閉まっている日に「刻限まであと何分」は、終わった日の話
+            if closed and "手仕舞いの刻限" in r:
+                continue
+            exclude.append(r.replace("**", ""))     # 端末向けの強調は画面に出さない
+            if len(exclude) >= 2:
+                break
 
     # 2) 手で入れた警戒帯（介入など）
     zone = _zone_hit(cfg, symbol, facts.price)
@@ -436,7 +442,9 @@ def verdict_for(cfg: TradingConfig, symbol: str, analysis, facts: Facts,
 
     ok, why = can_open(cfg.filters, now)
     if not closed and not ok and why:
-        exclude.append(why)
+        why = why.replace("**", "")
+        if why not in exclude:                   # 強制条件の側と同じ文なら1回だけ
+            exclude.append(why)
 
     # 4) 今日の値幅（閉まっている日は、終わった日の話なので判定に使わない）
     if not closed and facts.used_ratio is not None:
