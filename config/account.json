@@ -13,6 +13,7 @@
 
   "course": "L25_10k",
   "_course": "取引コース。公式の取引要綱に載っている単位をそのまま写している。",
+  "_course_confirmed": "利用者が実際に使っているコースであることを確認（2026-09-28）。取引単位の出典は verified_source（2026-09-14 取得）",
   "courses": {
     "L25_10k": {
       "label": "L25R／L25 1万通貨コース",
@@ -54,6 +55,26 @@
     "_use_structure": "直近の転換点の外側に置けるなら、そちらを優先する",
     "structure_buffer_atr": 0.25,
     "_structure_buffer_atr": "転換点のさらに外側へ置く余裕"
+  },
+
+  "price_tick": {
+    "JPY": 0.001,
+    "other": 0.00001,
+    "_basis": "推定。取引要綱に呼値（最小変動幅）の明記を確認できなかった（2026-09-28）。公表スプレッド（USDJPY 0.9銭＝0.009、ZARJPY 0.149、EURUSD 0.00014 など、config/spreads.json）が 0.1銭／0.1pips 刻みで表記されているため、それ以上に細かくないとみなす。**業者の事実としては表示しない**（計画に『推定』と出す）"
+  },
+
+  "plan_calc": {
+    "_comment": "Phase 2 の新しい計算（backend/app/plan_calc.py）で使う**研究上の仮定**。業者の事実ではない。利用者が既定案を承認（2026-09-28）。docs/phase2-design.md の U6・U8",
+    "slippage_pips_per_side": 0.2,
+    "_slippage": "建てるときと決済するときに、それぞれこれだけ不利に約定すると仮定する（pips）",
+    "conversion_stress": 0.01,
+    "_conversion_stress": "円換算レートを不利側にこの割合だけずらす（損失・証拠金は大きく、利益は小さく）",
+    "quote_valid_minutes": 5,
+    "_quote_valid_minutes": "MT4 から手で入れた bid・ask を使ってよい時間。過ぎたら入れ直す",
+    "quote_max_spread_x_wide": 3,
+    "_quote_max_spread_x_wide": "手入力のスプレッドが spreads.json の wide のこの倍を超えたら、打ち間違いか指標時の拡大とみなして止める",
+    "quote_max_gap_atr": 3,
+    "_quote_max_gap_atr": "手入力の仲値が、取り込んだ足の終値から ATR のこの倍以上離れていたら、別銘柄の値を入れた疑いで止める"
   },
 
   "targets": {

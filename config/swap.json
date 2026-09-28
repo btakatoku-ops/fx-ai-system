@@ -3,9 +3,9 @@
   "_how_to_update": "scripts/import_swap.py で CSV から取り込む。手で書き換えてもよいが、source と as_of を必ず更新すること。",
   "available": true,
   "_available": "表が入っていれば true。取り込みスクリプトが自動で切り替える",
-  "source": "外為オンライン スワップポイント一覧表 2026年9月（PDF）",
+  "source": "外為オンライン スワップポイント一覧表 2026年9月",
   "_source": "どこの表か（例: 外為オンライン 店頭FX スワップポイント一覧）",
-  "as_of": "2026-09-11",
+  "as_of": "2026-09-28",
   "_as_of": "その表の日付（YYYY-MM-DD）。スワップは毎日変わるので、これが無い数字は使えない",
   "unit": "JPY_PER_LOT_PER_DAY",
   "_unit": "1Lot（1万通貨）を1日持ち越したときの円。外為オンラインの表示と同じ単位",
@@ -15,54 +15,54 @@
   "table": {
     "AUDCHF": {
       "buy": 135.0,
-      "sell": -205.0
+      "sell": -200.0
     },
     "AUDJPY": {
       "buy": 115.0,
       "sell": -125.0
     },
     "AUDNZD": {
-      "buy": 40.0,
-      "sell": -60.0
+      "buy": 45.0,
+      "sell": -70.0
     },
     "AUDUSD": {
       "buy": 0.0,
-      "sell": -40.0
+      "sell": -25.0
     },
     "CADJPY": {
       "buy": 40.0,
       "sell": -65.0
     },
     "CHFJPY": {
-      "buy": -60.0,
-      "sell": 40.0
+      "buy": -55.0,
+      "sell": 35.0
     },
     "EURAUD": {
       "buy": -155.0,
-      "sell": 85.0
+      "sell": 90.0
     },
     "EURCAD": {
       "buy": 10.0,
       "sell": -30.0
     },
     "EURCHF": {
-      "buy": 125.0,
-      "sell": -185.0
+      "buy": 120.0,
+      "sell": -180.0
     },
     "EURGBP": {
-      "buy": -60.0,
-      "sell": 25.0
-    },
-    "EURJPY": {
-      "buy": 80.0,
-      "sell": -90.0
-    },
-    "EURNZD": {
       "buy": -65.0,
       "sell": 30.0
     },
+    "EURJPY": {
+      "buy": 75.0,
+      "sell": -85.0
+    },
+    "EURNZD": {
+      "buy": -55.0,
+      "sell": 25.0
+    },
     "EURUSD": {
-      "buy": -65.0,
+      "buy": -70.0,
       "sell": 40.0
     },
     "GBPAUD": {
@@ -70,19 +70,19 @@
       "sell": 5.0
     },
     "GBPCHF": {
-      "buy": 150.0,
-      "sell": -260.0
+      "buy": 215.0,
+      "sell": -305.0
     },
     "GBPJPY": {
-      "buy": 140.0,
-      "sell": -165.0
+      "buy": 135.0,
+      "sell": -160.0
     },
     "GBPNZD": {
-      "buy": 15.0,
-      "sell": -50.0
+      "buy": 25.0,
+      "sell": -65.0
     },
     "GBPUSD": {
-      "buy": 10.0,
+      "buy": 15.0,
       "sell": -30.0
     },
     "MXNJPY": {
@@ -90,12 +90,12 @@
       "sell": -15.0
     },
     "NZDJPY": {
-      "buy": 55.0,
-      "sell": -85.0
+      "buy": 15.0,
+      "sell": -55.0
     },
     "NZDUSD": {
-      "buy": -45.0,
-      "sell": 15.0
+      "buy": -50.0,
+      "sell": 20.0
     },
     "TRYJPY": {
       "buy": 25.0,
@@ -103,19 +103,19 @@
     },
     "USDCAD": {
       "buy": 25.0,
-      "sell": -70.0
+      "sell": -75.0
     },
     "USDCHF": {
       "buy": 95.0,
       "sell": -190.0
     },
     "USDJPY": {
-      "buy": 95.0,
-      "sell": -120.0
+      "buy": 125.0,
+      "sell": -135.0
     },
     "ZARJPY": {
       "buy": 5.0,
-      "sell": -10.0
+      "sell": -20.0
     }
   },
   "_rollover_note": "水曜（一部は木曜）をまたぐと3日分付くことがある。このアプリは1日あたりの額だけを出し、何日分になるかは判定しない。",

@@ -10,7 +10,7 @@
 // 側も同じ。外に出すなら、ここに確認を入れること。
 import { revalidatePath } from "next/cache";
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, type PlanCalcResult } from "@/lib/api";
 
 export interface FundamentalsState {
   ok: boolean;
@@ -53,4 +53,46 @@ export async function saveFundamentals(
   }
   revalidatePath("/");
   return { ok: true, message: "保存しました。日付は今日になります" };
+}
+
+// ------------------------------------------------------------ 自分向けの計画
+
+export interface PlanState {
+  error: string;
+  result: PlanCalcResult | null;
+  // 入れた値を残す（送ると欄が空になるので、入れ直さなくて済むように）
+  bid?: string;
+  ask?: string;
+}
+
+const NUM = /^\d+(\.\d+)?$/;
+
+export async function runPlan(_prev: PlanState, form: FormData): Promise<PlanState> {
+  const pair = String(form.get("pair") ?? "").toUpperCase();
+  const direction = String(form.get("direction") ?? "");
+  const bid = String(form.get("bid") ?? "").trim();
+  const ask = String(form.get("ask") ?? "").trim();
+
+  const keep = { bid, ask };
+  if (!/^[A-Z]{6}$/.test(pair)) return { error: "銘柄が不正です", result: null, ...keep };
+  if (direction !== "LONG" && direction !== "SHORT")
+    return { error: "買いか売りを選んでください", result: null, ...keep };
+  if (!NUM.test(bid) || !NUM.test(ask))
+    return { error: "MT4 の bid と ask を数字で入れてください", result: null, ...keep };
+
+  try {
+    const res = await fetch(`${API_BASE}/api/plan-calc/${pair}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ direction, bid, ask }),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      return { error: `計画を出せません（${res.status}）${body?.detail ? `: ${body.detail}` : ""}`, result: null, ...keep };
+    }
+    return { error: "", result: (await res.json()) as PlanCalcResult, ...keep };
+  } catch (err) {
+    return { error: `API に繋がりません: ${String(err)}`, result: null, ...keep };
+  }
 }

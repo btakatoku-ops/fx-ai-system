@@ -259,3 +259,20 @@ def test_aligned_bars_are_all_kept():
         rows = bars(datetime(2026, 9, 25, 0, 0, tzinfo=UTC), minutes, 30)
         kept, dropped = drop_misaligned(rows, minutes)
         assert dropped == 0 and len(kept) == 30
+
+
+def test_recent_mode_appends_without_losing_history(tmp_path):
+    """--recent は直近だけ取って継ぎ足す。**古い足を消さない。同じ時刻は新しい方。**"""
+    fy = fetch_yahoo
+    t0 = datetime(2026, 9, 28, 0, 0, tzinfo=timezone.utc)
+    row = lambda i, c: {"timestamp": t0 + timedelta(minutes=5 * i), "open": c,  # noqa: E731
+                        "high": c, "low": c, "close": c, "volume": 0}
+    path = tmp_path / "X_M5.csv"
+    fy.write_csv(path, [row(i, 1.0) for i in range(10)])
+    old = fy.read_csv(path)
+    merged = fy.merge_rows(old, [row(9, 2.0), row(10, 3.0)])
+    assert len(merged) == 11
+    assert merged[0]["close"] == 1.0                 # 古い足は残る
+    assert merged[9]["close"] == 2.0                 # 同じ時刻は新しく取った値
+    assert merged[-1]["timestamp"] == t0 + timedelta(minutes=50)
+    assert not (tmp_path / "X_M5.csv.tmp").exists()  # 一時ファイルを残さない

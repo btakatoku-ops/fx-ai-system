@@ -55,6 +55,37 @@ def _scratch_database(tmp_path_factory):
     reset_config_cache()
 
 
+# ---------------------------------------------------------------- 手仕舞いの刻限
+
+# **試験を、走らせた時刻に依存させない。**
+#
+# 刻限を 01:00 にしてから（2026-09-27）、23:30〜日替わりは「建てない」
+# 時間帯になった。時刻を渡さずに分析する試験は実際の時計を読むので、
+# 夜中に走らせると安全性の試験がいっせいに落ちた（実際に 5件落ちた）。
+# 以前の 06:00 でも 04:30〜06:00 は同じことが起きえた。
+#
+# 刻限の規則は**止めない**。規則を見る時刻だけ、その日の 14:00（日本時間）
+# に固定する。刻限そのものを確かめる試験（test_day_trade・test_board）は
+# 自分で時刻を渡しているので、差し替えを受けない（test_plan_calc も同じ）。
+_OWN_CLOCK = {"test_day_trade", "test_board", "test_plan_calc"}
+
+
+@pytest.fixture(autouse=True)
+def _midday_for_the_deadline(request, monkeypatch):
+    if request.module.__name__.rsplit(".", 1)[-1] in _OWN_CLOCK:
+        yield
+        return
+    from datetime import datetime, timezone
+
+    from app import day_trade
+
+    original = day_trade.can_open
+    today = datetime.now(timezone.utc).date()
+    midday = datetime(today.year, today.month, today.day, 5, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(day_trade, "can_open", lambda cfg, now: original(cfg, midday))
+    yield
+
+
 # ---------------------------------------------------------------- 予定表
 
 # **試験を、置いてあるデータの古さに依存させない。**

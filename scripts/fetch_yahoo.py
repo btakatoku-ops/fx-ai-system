@@ -52,6 +52,41 @@ FETCH_PLAN: List[Tuple[str, str, str]] = [
 ]
 RESAMPLE = {"H4": ("H1", 4)}     # H4 は H1 を4本ずつ
 
+# 取引時間中の取り直し（--recent）。**直近だけ取って、いまのファイルに継ぎ足す。**
+# 5分ごとに60日ぶんを取り直すと、相手先にも回線にも重い（1回で約1MB×銘柄）。
+RECENT_PLAN: List[Tuple[str, str, str]] = [
+    ("M5", "5m", "1d"),
+    ("M15", "15m", "5d"),
+    ("H1", "1h", "5d"),
+]
+
+
+def read_csv(path: Path) -> List[Dict]:
+    """書き出した CSV を読み戻す（--recent で継ぎ足すため）。無ければ空。"""
+    if not path.exists():
+        return []
+    out: List[Dict] = []
+    with path.open(encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            try:
+                out.append({
+                    "timestamp": datetime.fromisoformat(r["timestamp"]),
+                    "open": float(r["open"]), "high": float(r["high"]),
+                    "low": float(r["low"]), "close": float(r["close"]),
+                    "volume": float(r["volume"] or 0),
+                })
+            except (KeyError, ValueError):
+                continue                          # 壊れた行は捨てる（推測で直さない）
+    return out
+
+
+def merge_rows(old: List[Dict], new: List[Dict]) -> List[Dict]:
+    """継ぎ足す。**同じ時刻は新しく取った方を採る**（確定し直した値）。"""
+    merged = {r["timestamp"]: r for r in old}
+    for r in new:
+        merged[r["timestamp"]] = r
+    return [merged[k] for k in sorted(merged)]
+
 
 def yahoo_symbol(pair: str) -> str:
     """USDJPY -> USDJPY=X。Yahoo の為替はこの形。"""
@@ -234,8 +269,15 @@ def fill_gaps(coarse: List[Dict], fine: List[Dict], factor: int,
 
 
 def write_csv(path: Path, rows: List[Dict]) -> None:
+    """一時ファイルに書いてから差し替える。
+
+    **書いている途中のファイルを画面に読ませない。** 取引時間中は1時間ごとに
+    取り込み直すので、画面が読む瞬間と重なりうる。Windows では読んでいる
+    最中の差し替えが失敗することがあるので、少し待って何度か試す。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as f:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
         w.writerow(["timestamp", "open", "high", "low", "close", "volume"])
         for r in rows:
@@ -244,14 +286,22 @@ def write_csv(path: Path, rows: List[Dict]) -> None:
                 f"{r['open']:.6f}", f"{r['high']:.6f}",
                 f"{r['low']:.6f}", f"{r['close']:.6f}", f"{r['volume']:.0f}",
             ])
+    for attempt in range(10):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            time.sleep(0.3 * (attempt + 1))
+    tmp.replace(path)                           # 最後は例外をそのまま出す
 
 
-def fetch_pair(pair: str, out_dir: Path, pause: float) -> Dict[str, int]:
+def fetch_pair(pair: str, out_dir: Path, pause: float,
+               recent: bool = False) -> Dict[str, int]:
     counts: Dict[str, int] = {}
     sym = urllib.parse.quote(yahoo_symbol(pair), safe="")
     by_tf: Dict[str, List[Dict]] = {}
 
-    for tf, interval, rng in FETCH_PLAN:
+    for tf, interval, rng in (RECENT_PLAN if recent else FETCH_PLAN):
         url = f"{BASE}{sym}?interval={interval}&range={rng}&includePrePost=false"
         payload = get_json(url)
         time.sleep(pause)                       # 相手先に負担をかけない
@@ -266,6 +316,12 @@ def fetch_pair(pair: str, out_dir: Path, pause: float) -> Dict[str, int]:
         if not rows:
             print(f"  {pair} {tf}: 足が0本")
             continue
+        if recent:
+            old = read_csv(out_dir / f"{pair}_{tf}.csv")
+            if not old:
+                print(f"  {pair} {tf}: 継ぎ足す元のファイルが無いので書きません（先に全体を取ってください）")
+                continue
+            rows = merge_rows(old, rows)
         by_tf[tf] = rows
         counts[tf] = len(rows)
         mark = f"（未確定の足を{dropped}本落とした）" if dropped else ""
@@ -313,6 +369,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--out", default="data/real", help="書き出し先")
     ap.add_argument("--pause", type=float, default=1.2,
                     help="1回の取得ごとに空ける秒数")
+    ap.add_argument("--recent", action="store_true",
+                    help="直近だけ取って、いまのファイルに継ぎ足す（取引時間中の取り直し用）")
     a = ap.parse_args(argv)
 
     pairs = ([p.strip().upper() for p in a.pairs.split(",") if p.strip()]
@@ -327,7 +385,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ok, ng = [], []
     for i, pair in enumerate(pairs, 1):
         print(f"[{i}/{len(pairs)}] {pair}")
-        counts = fetch_pair(pair, out_dir, a.pause)
+        counts = fetch_pair(pair, out_dir, a.pause, recent=a.recent)
         (ok if len(counts) == 4 else ng).append(pair)
 
     print(f"\n揃った銘柄 {len(ok)} 件")

@@ -519,6 +519,64 @@ def candles(
     }
 
 
+class PlanCalcIn(BaseModel):
+    """自分向けの計画の入力。**向きは使う人が選ぶ。基準価格は MT4 の bid・ask。**"""
+
+    direction: str
+    bid: str
+    ask: str
+    balance: Optional[float] = None
+    risk_pct: Optional[float] = None
+
+
+@app.post("/api/plan-calc/{pair}")
+def plan_calc_endpoint(pair: str, body: PlanCalcIn = Body(...)):
+    """建玉計画（Phase 2・新しい計算）。**発注はしない。**
+
+    ボードが除外の日、手入力の値が古い・おかしい、費用込みの比が足りない、
+    などの場合は ``NO_TRADE`` と理由コードを返す。PLAN_OK でも儲かる根拠ではない。
+    """
+    from . import plan_calc as pc
+    from . import plan_inputs as pi
+
+    cfg = get_trading_config()
+    try:
+        symbol = cfg.pair(pair).symbol
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if body.direction not in (pc.LONG, pc.SHORT):
+        raise HTTPException(status_code=422, detail="direction は LONG か SHORT")
+    try:
+        bid, ask = pc.dec(body.bid.strip()), pc.dec(body.ask.strip())
+    except Exception:                           # noqa: BLE001
+        raise HTTPException(status_code=422, detail="bid・ask を数字で入れてください")
+    if body.risk_pct is not None and not (0 < body.risk_pct <= 10):
+        raise HTTPException(status_code=422, detail="risk_pct は 0〜10")
+    if body.balance is not None and body.balance <= 0:
+        raise HTTPException(status_code=422, detail="balance は正の数")
+
+    provider = get_provider()
+    now = datetime.now(timezone.utc)
+    analysis = analyze(symbol, provider, cfg)
+    try:
+        m15 = provider.get_candles(symbol, "M15", limit=2)
+    except Exception:                           # noqa: BLE001
+        m15 = None
+    board = build_board(cfg, provider, symbol, analysis, now)
+    inputs = pi.build(cfg, symbol, body.direction, bid, ask, analysis, m15, board,
+                      now=now, balance=body.balance, risk_pct=body.risk_pct)
+    if inputs is None:
+        decision = pc.PlanDecision(
+            "NO_TRADE", [pc.Stop("CANDIDATE_UNAVAILABLE",
+                                 "足や ATR が取れず、損切りの幅を決められません")],
+            None, [pc.NO_EDGE_NOTE])
+    else:
+        decision = pc.decide(inputs, now)
+    return {"version": __version__, "pair": symbol, "direction": body.direction,
+            "board_state": (board.get("verdict") or {}).get("state"),
+            **pi.decision_dict(decision, inputs)}
+
+
 @app.get("/api/plan/{pair}")
 def plan(
     pair: str,

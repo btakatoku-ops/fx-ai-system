@@ -296,3 +296,40 @@ ul.facts li { padding: 2px 0; }
 .brief .bs em { font-style: normal; color: var(--tx2); font-size: 11px; }
 .brief .bq { margin: 4px 0 0; font-size: 12px; color: var(--tx2); }
 .brief a { text-decoration: underline; }
+
+/* 自分向けの計画。**発注はしない。** 押せるのは向きの切り替えと計算だけ。 */
+.planpanel { margin: 10px 0; }
+/* **押せるものは押せるように見せる。** 小さな文字の行だと見落とされた（2026-09-28） */
+.planpanel summary.planbtn { cursor: pointer; list-style: none; display: block;
+  border: 1px solid #4a7ad4; background: #4a7ad41f; color: var(--tx);
+  border-radius: 8px; padding: 10px 14px; font-size: 15px; font-weight: 700; }
+.planpanel summary.planbtn::-webkit-details-marker { display: none; }
+.planpanel summary.planbtn::before { content: "▸ "; color: #7ea4ea; }
+.planpanel[open] summary.planbtn::before { content: "▾ "; }
+.planpanel summary.planbtn .sub { display: block; font-size: 12px; font-weight: 400; color: var(--tx2); }
+.planpanel form { display: grid; gap: 8px; margin-top: 6px; }
+.planpanel .dirs { display: flex; gap: 8px; }
+.planpanel button { background: #1d2330; color: var(--tx); border: 1px solid var(--line);
+                    border-radius: 6px; padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer; }
+.planpanel .dirs .on.up { border-color: var(--buy); color: var(--buy); }
+.planpanel .dirs .on.down { border-color: var(--sell); color: var(--sell); }
+.planpanel .quotes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.planpanel .quotes label { display: grid; gap: 3px; color: var(--tx2); font-size: 11.5px; }
+.planpanel input { background: var(--bg); color: var(--tx); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 16px;
+                   font-variant-numeric: tabular-nums; min-width: 0; }
+.planpanel .go { justify-self: start; border-color: var(--tx2); }
+.planpanel .go:disabled { opacity: 0.6; }
+.planpanel .err { color: var(--sell); font-size: 13px; margin: 0; }
+.planpanel .pr { margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.planpanel .pr.ok { border-color: #2fb37a66; }
+.planpanel .st { font-weight: 700; font-size: 13px; }
+.planpanel .st.ok { color: var(--buy); }
+.planpanel .st.no { color: var(--tx2); }
+.planpanel table { font-size: 13px; margin-top: 4px; }
+.planpanel th { font-size: 12px; font-weight: 500; padding: 4px 6px 4px 0; white-space: nowrap; }
+.planpanel td { padding: 4px 0; }
+.planpanel td.loss { color: var(--sell); }
+.planpanel td.gain { color: var(--buy); }
+.planpanel code { font-size: 11px; color: var(--tx2); }
+.planpanel .small p { font-size: 11.5px; margin: 4px 0; }

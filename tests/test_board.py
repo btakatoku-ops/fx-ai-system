@@ -235,7 +235,8 @@ def _board(pair="USDJPY", at=None, open_=True, lean="down", state="aligned_down"
     return {
         "pair": pair, "generated_at": at.isoformat(),
         "facts": {"price": 150.0, "adr": 1.0, "used_ratio": 0.3,
-                  "position": 0.5, "market_open": open_},
+                  "position": 0.5, "market_open": open_,
+                  "price_at": (at - timedelta(minutes=15)).isoformat()},
         "factors": [{"key": "trend", "view": "down"}],
         "verdict": {"state": state, "lean": lean, "exclude": [], "cautions": []},
     }
@@ -340,3 +341,37 @@ def test_fundamentals_need_a_source_and_are_dated_today(tmp_path,
     assert saved["as_of"] == datetime.now(JST).date().isoformat()   # 日本時間の日付
     assert saved["saved_at"]
     assert B.load_fundamentals(tmp_path / "f.json")["USDJPY"]["source"] == "自分の見立て"
+
+
+def test_a_closed_day_does_not_list_the_deadline_from_the_filters(cfg):
+    """閉まっている日に、強制条件側の「刻限まであと何分」を除外に出さない。"""
+    a = _analysis(cfg, filter_blocked=True, invalidation_reasons=[
+        "手仕舞いの刻限まで 62 分しかありません（90 分以上が必要）。**翌日に持ち越さないため、ここでは建てません**",
+        "H1 と H4 の向きが逆です（上位足と下位足が競合）"])
+    f = _facts()
+    f.market_open = False
+    v = B.verdict_for(cfg, "USDJPY", a, f, [], datetime(2026, 9, 27, 12, 0, tzinfo=UTC))
+    assert not any("刻限" in x for x in v["exclude"])
+    assert any("H1 と H4" in x for x in v["exclude"])
+
+
+def test_terminal_emphasis_does_not_reach_the_screen(cfg):
+    a = _analysis(cfg, filter_blocked=True, invalidation_reasons=["**強調**つきの理由"])
+    v = B.verdict_for(cfg, "USDJPY", a, _facts(), [], _open_now())
+    assert all("**" not in x for x in v["exclude"])
+
+
+def test_a_board_without_todays_bars_is_not_kept(url):
+    """**月曜の朝、取り込み前に作ったボード（金曜の終値）を残さない。**
+
+    2026-09-28、前夜に手動で走らせた確認が朝まで止まっていて、08:01 に
+    金曜の終値のボードを残した。1日1枚の決まりで、8:30 の正しいボードが
+    入らなかった。
+    """
+    monday = datetime(2026, 9, 27, 23, 1, tzinfo=UTC)          # 月曜 08:01 JST
+    b = _board(at=monday)
+    b["facts"]["price_at"] = datetime(2026, 9, 25, 20, 45, tzinfo=UTC).isoformat()
+    assert board_log.record(b, database_url=url) is False
+    b["facts"]["price_at"] = datetime(2026, 9, 27, 22, 45, tzinfo=UTC).isoformat()
+    assert board_log.record(b, database_url=url) is True
+
