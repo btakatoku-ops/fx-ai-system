@@ -8,42 +8,43 @@
   "views": {
     "GBPUSD": {
       "view": "down",
-      "note": "Fedタカ派(10月利上げ確率65%)でドル高＋英財政懸念でポンド安。両面で下",
-      "source": "FXモーニングブリーフ 09/28 08:00 JST",
-      "as_of": "2026-09-28",
-      "saved_at": "2026-09-27T23:43:19.683166+00:00",
-      "url": "https://claude.ai/artifact/6t4b7ZTHUm9fhQrHEbZFPK"
+      "note": "Fedタカ派(10月利上げ66–70%)でドル高＋英財政懸念でポンド安。両面で下（BoE利上げ観測のみが下支え）",
+      "source": "FXモーニングブリーフ 09/29 08:00 JST",
+      "as_of": "2026-09-29",
+      "saved_at": "2026-09-28T23:51:49.053231+00:00",
+      "url": "https://claude.ai/artifact/Y3TosoTMWDoURMEhPQ7dBF"
     },
     "USDJPY": {
       "view": "down",
-      "note": "Fedタカ派(ドル高▲)だが、BOJ引締め・JGB30年ぶり高利回り・介入警戒(160)が円買い方向＝ネット▼寄り",
-      "source": "FXモーニングブリーフ 09/28 08:00 JST",
-      "as_of": "2026-09-28",
-      "saved_at": "2026-09-27T23:43:19.683121+00:00",
-      "url": "https://claude.ai/artifact/6t4b7ZTHUm9fhQrHEbZFPK"
+      "note": "Fedタカ派(10月利上げ70%・ドル高▲)だが、BOJ緩やかな引締め・介入警戒(160)・要人警告が円買い方向＝ネット▼寄り",
+      "source": "FXモーニングブリーフ 09/29 08:00 JST",
+      "as_of": "2026-09-29",
+      "saved_at": "2026-09-28T23:51:49.053186+00:00",
+      "url": "https://claude.ai/artifact/Y3TosoTMWDoURMEhPQ7dBF"
     },
     "GBPJPY": {
-      "view": "down",
+      "view": "up",
       "note": "金利差キャリーは買い方向。ただしBOJ引締め・介入で上値抑制",
-      "source": "FXモーニングブリーフ 09/28 08:00 JST",
-      "as_of": "2026-09-28",
-      "saved_at": "2026-09-28T09:54:27.874739+00:00"
+      "source": "FXモーニングブリーフ 09/29 08:00 JST",
+      "as_of": "2026-09-29",
+      "saved_at": "2026-09-28T23:51:49.053264+00:00",
+      "url": "https://claude.ai/artifact/Y3TosoTMWDoURMEhPQ7dBF"
     },
     "EURUSD": {
       "view": "down",
-      "note": "Fedタカ派でドル高＞ECB。ドル優勢の地合い継続",
-      "source": "FXモーニングブリーフ 09/28 08:00 JST",
-      "as_of": "2026-09-28",
-      "saved_at": "2026-09-27T23:43:19.683183+00:00",
-      "url": "https://claude.ai/artifact/6t4b7ZTHUm9fhQrHEbZFPK"
+      "note": "Fedタカ派＋米PMI 58.4(2021年7月来)＞欧PMI 53.1でドル優勢。ドル高地合い継続",
+      "source": "FXモーニングブリーフ 09/29 08:00 JST",
+      "as_of": "2026-09-29",
+      "saved_at": "2026-09-28T23:51:49.053249+00:00",
+      "url": "https://claude.ai/artifact/Y3TosoTMWDoURMEhPQ7dBF"
     },
     "EURJPY": {
       "view": "up",
-      "note": "金利差キャリーは買い方向。だがBOJ引締め・円高で相殺",
-      "source": "FXモーニングブリーフ 09/28 08:00 JST",
-      "as_of": "2026-09-28",
-      "saved_at": "2026-09-27T23:43:19.683210+00:00",
-      "url": "https://claude.ai/artifact/6t4b7ZTHUm9fhQrHEbZFPK"
+      "note": "金利差キャリーは買い方向。だがBOJ引締め・介入警戒で相殺",
+      "source": "FXモーニングブリーフ 09/29 08:00 JST",
+      "as_of": "2026-09-29",
+      "saved_at": "2026-09-28T23:51:49.053279+00:00",
+      "url": "https://claude.ai/artifact/Y3TosoTMWDoURMEhPQ7dBF"
     }
   }
 }

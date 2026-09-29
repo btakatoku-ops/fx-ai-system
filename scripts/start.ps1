@@ -1,4 +1,4 @@
-# FX 判断支援エンジンを起動する。
+﻿# FX 判断支援エンジンを起動する。
 #
 # **毎回2つの窓でコマンドを打たなくて済むようにする。** 実際、起動を
 # 忘れたまま iPhone から開いて「見られない」になった。
@@ -58,8 +58,10 @@ Start-Process -FilePath $venv `
 Write-Host "バックエンド: http://127.0.0.1:8000" -ForegroundColor Green
 
 # --- 画面 ---
+# **npm.cmd と書く。** Windows PowerShell 5.1（タスクスケジューラ）では "npm" が npm.ps1 に
+# 解決され、Start-Process ではスクリプトが「開かれる」だけで画面が起動しなかった（2026-09-29）。
 if ($Dev) {
-    Start-Process -FilePath "npm" -ArgumentList "run", "dev" `
+    Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" `
         -WorkingDirectory $frontend -WindowStyle Hidden
     Write-Host "画面（開発モード）" -ForegroundColor Green
 } else {
@@ -67,7 +69,7 @@ if ($Dev) {
     Push-Location $frontend
     & npm run build | Out-Null
     Pop-Location
-    Start-Process -FilePath "npm" -ArgumentList "run", "start" `
+    Start-Process -FilePath "npm.cmd" -ArgumentList "run", "start" `
         -WorkingDirectory $frontend -WindowStyle Hidden
     Write-Host "画面（本番ビルド）" -ForegroundColor Green
 }

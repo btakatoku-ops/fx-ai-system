@@ -3,7 +3,7 @@
  "feeds": [
   "this_week"
  ],
- "fetched_at": "2026-09-27T23:41:22.676568+00:00",
+ "fetched_at": "2026-09-29T00:00:13.936981+00:00",
  "count": 141,
  "events": [
   {
@@ -451,16 +451,16 @@
    "at": "2026-09-30T13:45:00+00:00"
   },
   {
-   "title": "Crude Oil Inventories",
-   "currency": "USD",
+   "title": "Gov Board Member Tschudin Speaks",
+   "currency": "CHF",
    "impact": "Low",
    "at": "2026-09-30T14:30:00+00:00"
   },
   {
-   "title": "Gov Board Member Tschudin Speaks",
-   "currency": "CHF",
+   "title": "Crude Oil Inventories",
+   "currency": "USD",
    "impact": "Low",
-   "at": "2026-09-30T15:00:00+00:00"
+   "at": "2026-09-30T14:30:00+00:00"
   },
   {
    "title": "FOMC Member Barkin Speaks",
