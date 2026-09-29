@@ -186,7 +186,8 @@ def as_text(brief: Dict[str, Any]) -> str:
     if brief["todo"]:
         lines.append("  手当てが要るもの:" if brief["ready"] else "  やること:")
         for t in brief["todo"]:
-            lines.append(f"    $ {t}")
+            # コマンドなら「$」を付ける。説明（「（取り込み直しでは直りません）」など）には付けない
+            lines.append(f"    {'' if str(t).startswith('（') else '$ '}{t}")
     lines.append("")
 
     if brief.get("boards"):
