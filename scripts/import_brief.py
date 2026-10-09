@@ -38,13 +38,36 @@ from app import brief_import as bi                            # noqa: E402
 from app.config import get_trading_config                     # noqa: E402
 
 
+def scan_recent(hours: float) -> List[Path]:
+    """Claude が直近に保存したアーティファクトの index.html を探す。
+
+    Artifact の read（path: index.html）は、セッションの作業フォルダの
+    ``artifact-files/<id>/index.html`` に保存する。そのフォルダはセッションごとに
+    違うので、Claude の一時フォルダの下を探す。**中身は parse で確かめる**ので、
+    ブリーフでないページを拾っても取り込まれない。
+    """
+    import os
+    import time
+
+    root = Path(os.environ.get("TEMP") or os.environ.get("TMP") or ".") / "claude"
+    limit = time.time() - hours * 3600
+    found = [p for p in root.glob("**/artifact-files/*/index.html")
+             if p.is_file() and p.stat().st_mtime >= limit]
+    return sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)[:12]
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, OSError):
         pass
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("html", nargs="+", help="保存したブリーフの HTML")
+    ap.add_argument("html", nargs="*", help="保存したブリーフの HTML")
+    ap.add_argument("--scan-recent", action="store_true",
+                    help="Claude が直近に保存したアーティファクトの HTML を自分で探す。"
+                         "定期タスクが毎日同じコマンドで呼べるように（許可を前もって出せる）")
+    ap.add_argument("--scan-hours", type=float, default=3.0,
+                    help="--scan-recent で探す範囲（何時間前までに保存されたものか）")
     ap.add_argument("--url", action="append", default=[],
                     help="アーティファクトの URL（HTML と同じ順に。省略可）")
     ap.add_argument("--allow-old", action="store_true",
@@ -54,7 +77,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     a = ap.parse_args(argv)
 
     docs: List[dict] = []
-    for i, path in enumerate(a.html):
+    paths = list(a.html)
+    if a.scan_recent:
+        paths += [str(p) for p in scan_recent(a.scan_hours)]
+    if not paths:
+        print("取り込む HTML がありません（--scan-recent で見つからなかった）。")
+        return 2
+    for i, path in enumerate(paths):
         url = a.url[i] if i < len(a.url) else ""
         try:
             doc = bi.parse(Path(path).read_text(encoding="utf-8"))

@@ -67,7 +67,7 @@ def _scratch_database(tmp_path_factory):
 # 刻限の規則は**止めない**。規則を見る時刻だけ、その日の 14:00（日本時間）
 # に固定する。刻限そのものを確かめる試験（test_day_trade・test_board）は
 # 自分で時刻を渡しているので、差し替えを受けない（test_plan_calc も同じ）。
-_OWN_CLOCK = {"test_day_trade", "test_board", "test_plan_calc"}
+_OWN_CLOCK = {"test_day_trade", "test_board", "test_plan_calc", "test_plancalc_js"}
 
 
 @pytest.fixture(autouse=True)

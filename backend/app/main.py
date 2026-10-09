@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from fastapi import Body, FastAPI, HTTPException, Query
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -271,6 +271,16 @@ def journal(limit: int = Query(50, ge=1, le=500),
         "summary": trade_logger.summary(url),
         "entries": trade_logger.recent(url, limit=limit, pair=pair),
     }
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard() -> HTMLResponse:
+    """携帯の公開ページと**同じ 1 枚**を、開いた時のデータで作る（PC の画面から開く）。"""
+    from . import dashboard_page
+
+    html = dashboard_page.build(get_trading_config(), get_provider(),
+                                settings.resolved_database_url, home="/")
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/board")

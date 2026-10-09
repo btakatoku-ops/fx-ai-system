@@ -68,8 +68,8 @@ const PAD_R = 74;
 const PAD_T = 12;
 const GAP = 12;
 
-const UP = "#2fb37a";
-const DOWN = "#e0575f";
+const UP = "#2fd47e";
+const DOWN = "#f2555a";
 const GRID = "#222936";
 const AXIS = "#8d97aa";
 const CROSS = "#7f8ca3";
@@ -743,7 +743,7 @@ export default function Chart({
                   </text>
                 </g>
               ))}
-              <path d={rsiPath} fill="none" stroke="#d9a13b" strokeWidth="1.3" />
+              <path d={rsiPath} fill="none" stroke="#f5b62b" strokeWidth="1.3" />
               <text
                 x={PAD_L + 4}
                 y={paneTop("rsi") + 12}

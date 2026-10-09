@@ -29,6 +29,9 @@ const VERDICT_MARK: Record<string, string> = {
   mixed: "■",
 };
 
+// 理由の文に入っている強調の印（**）は外して読む。携帯のページと同じ扱い。
+const plain = (s: string) => s.replace(/\*\*/g, "");
+
 function FactorCell({ f }: { f: BoardFactor }) {
   return (
     <div className={`factor v-${f.view}${f.stale ? " stale" : ""}`}>
@@ -273,7 +276,7 @@ export function BoardCard({ b }: { b: Board }) {
           <strong>除外の理由</strong>
           <ul className="plain">
             {v.exclude.map((x, i) => (
-              <li key={i}>{x}</li>
+              <li key={i}>{plain(x)}</li>
             ))}
           </ul>
         </div>
@@ -283,7 +286,7 @@ export function BoardCard({ b }: { b: Board }) {
           <strong>気をつけること</strong>
           <ul className="plain">
             {v.cautions.map((x, i) => (
-              <li key={i}>{x}</li>
+              <li key={i}>{plain(x)}</li>
             ))}
           </ul>
         </div>

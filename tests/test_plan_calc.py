@@ -410,12 +410,12 @@ def test_a_plan_ok_always_carries_the_no_edge_note():
 
 
 def test_only_the_new_endpoint_uses_the_new_calculation():
-    """P2-4 でつないだのは ``/api/plan-calc`` だけ。記録・朝の確認・公開ページ・
-    いまの ``/api/plan`` は、いままでどおり（新しい計算を使わない）。"""
+    """新しい計算を使うのは ``/api/plan-calc`` と、公開ページの計画（写しを作る
+    plan_snapshot）だけ。記録・朝の確認・いまの ``/api/plan`` は使わない。"""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
-    allowed = {"plan_calc.py", "plan_inputs.py", "main.py"}
+    allowed = {"plan_calc.py", "plan_inputs.py", "main.py", "plan_snapshot.py"}
     for f in list((root / "backend" / "app").glob("*.py")) + list((root / "scripts").glob("*.py")):
         if f.name in allowed:
             continue

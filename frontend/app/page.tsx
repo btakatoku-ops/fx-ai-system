@@ -156,7 +156,20 @@ export default async function Home({
 
   return (
     <>
-      <h1>FX 判断支援エンジン</h1>
+      {/* **携帯と同じダッシュボードへの入口。** 作り方はバックエンドに 1 つ
+          （/dashboard）。ここは分析の詳しい画面 */}
+      <div className="topnav">
+        <div className="brand">
+          <span className="logo">FX</span>
+          <div>
+            <span className="t1">BOARD · PLAN · NO ORDERS</span>
+            <h1>FX 判断支援エンジン</h1>
+          </div>
+        </div>
+        <a className="dashlink" href="/dashboard">
+          ◆ ダッシュボード（携帯と同じ画面）
+        </a>
+      </div>
       <p className="muted">
         {new Date(data.generated_at).toLocaleString("ja-JP")} 時点 ／ 供給元{" "}
         {data.provider.name}（{data.provider.state}）

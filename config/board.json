@@ -24,6 +24,14 @@
   "round_step": { "jpy": 0.5, "other": 0.005 },
   "_round_step": "キリのいい数字の刻み。円ペアは0.50円、それ以外は0.0050",
 
+  "session_boards": {
+    "london_open_local": "08:00",
+    "newyork_open_local": "08:30",
+    "grace_minutes": 60,
+    "stale_wait_minutes": 45
+  },
+  "_session_boards": "ロンドン・ニューヨークの始まりにもボードを1枚ずつ残す（2026-10-02 から。scripts/record_session_board.py を取引時間中の取り込みが5分ごとに呼ぶ）。時刻は現地時間で、夏時間は英国・米国それぞれの規則で判定する（ロンドン 08:00＝夏 16:00／冬 17:00 JST、ニューヨーク 08:30＝夏 21:30／冬 22:30 JST）。始まりから grace_minutes 分のあいだだけ残す。足が古くて除外になったボードは、始まりから stale_wait_minutes 分までは残さず次の回を待つ。採点は重ならない区間で行う（東京→ロンドンの始まり、ロンドン→ニューヨークの始まり、ニューヨーク→刻限）。",
+
   "fundamentals_stale_days": 7,
   "_fundamentals_stale_days": "ファンダの見立てが何日古くなったら使わないか。**古い見立てで対立・一致を判断しない**",
 

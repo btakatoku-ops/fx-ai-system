@@ -278,3 +278,20 @@ def test_the_morning_brief_can_be_read_as_text():
     # **見通しは書かない。**
     for word in ("買い目線", "売り目線"):
         assert word not in r.text
+
+
+def test_the_dashboard_is_the_same_page_as_the_public_one():
+    """PC の画面から開くダッシュボード。公開ページと同じ作り（発注の言葉なし・外から読まない）。"""
+    r = client.get("/dashboard")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
+    assert r.headers.get("cache-control") == "no-store"
+    html = r.text
+    assert "SIGNAL MATRIX" in html and "BOARD TAPE" in html
+    assert "https://" not in html and " src=" not in html
+
+
+def test_only_the_pc_dashboard_links_back_to_the_pc_screen():
+    """公開ページには PC への口を付けない（家の外では開けない）。"""
+    from app import board_page as P
+    assert 'class="kpi home"' in client.get("/dashboard").text
+    assert 'class="kpi home"' not in P.render([], None)

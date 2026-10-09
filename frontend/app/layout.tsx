@@ -26,7 +26,7 @@ export const viewport: Viewport = {
   // **画面いっぱいに広げる。** そのぶん、切り欠きとホームバーの内側に
   // 入らないよう、CSS 側で safe-area を見て余白を取る。
   viewportFit: "cover",
-  themeColor: "#0f1217",
+  themeColor: "#060a11",
 };
 
 export default function RootLayout({
