@@ -24,6 +24,14 @@
   "round_step": { "jpy": 0.5, "other": 0.005 },
   "_round_step": "キリのいい数字の刻み。円ペアは0.50円、それ以外は0.0050",
 
+  "dashboard": {
+    "jpy": ["USDJPY", "GBPJPY", "EURJPY"],
+    "non_jpy_pick": 3,
+    "pick_max_bar_age_minutes": 90,
+    "rate_max_age_minutes": 15
+  },
+  "_dashboard": "ダッシュボードに並べる銘柄（2026-10-09 利用者の指定）。円建ては固定の3本、非円建ては**時間帯（東京・ロンドン・ニューヨーク）の始まりごとに3本を選ぶ**（backend/app/daily_pick.py：利確 TP1 までの距離が、刻限までの実測の値動きの幅に収まりやすい順。費用込み。向きは見ない）。選ぶ時に足が pick_max_bar_age_minutes より古い銘柄は候補にしない。非円建ての円換算レートは取り込んだ5分足の終値で、rate_max_age_minutes より古ければ使わない",
+
   "session_boards": {
     "london_open_local": "08:00",
     "newyork_open_local": "08:30",

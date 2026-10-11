@@ -12,6 +12,10 @@
 - 数値は**文字列**で渡す（小数を2進数に直さない。ページ側も10進のまま計算する）。
 - **写しの古さで止める。** 作ってから ``valid_minutes`` を過ぎたら、ページは計画を
   出さない（M5 の足が「3本ぶん＝15分」で古すぎになるのと同じ考え方）。
+- **円建てでない銘柄（EURUSD など）は、円換算レートも渡す**（2026-10-09）。取り込んだ
+  5分足の終値（daily_pick.conversion_rates。古いものは入れない）。期限は写しと同じで、
+  損失は大きく・利益は小さく見るストレス（conversion_stress）を両側で掛ける。
+  レートが無ければ計画は止まる（1.0 では代用しない）。
 - 刻限は作った時点の「いまの取引日の刻限」を渡す。写しの寿命は日替わりを跨がない
   長さなので、ページ側で作り直す必要はない。
 
@@ -38,7 +42,8 @@ def _s(x) -> Optional[str]:
 
 def build(cfg: TradingConfig, symbol: str, analysis, series_m15, board: Dict,
           now: Optional[datetime] = None,
-          valid_minutes: int = VALID_MINUTES) -> Optional[Dict]:
+          valid_minutes: int = VALID_MINUTES,
+          rates: Optional[Dict[str, Dict]] = None) -> Optional[Dict]:
     """1銘柄ぶん。候補を作れなければ None（ページは「計画を出せません」と出す）。"""
     now = now or datetime.now(timezone.utc)
     long_c = pi.candidate(symbol, P.LONG, analysis, series_m15, now)
@@ -93,6 +98,8 @@ def build(cfg: TradingConfig, symbol: str, analysis, series_m15, board: Dict,
         "deadline": deadline.isoformat() if deadline else None,
         "next_rollover": (day_trade.rollover_start(now) + timedelta(days=1)).isoformat(),
         "min_minutes_to_exit": dt.get("min_minutes_to_exit", 60),
+        "rates": {k: {"value": _s(v["value"]), "observed_at": v["observed_at"]}
+                  for k, v in (rates or {}).items()},
     }
 
 
@@ -140,4 +147,33 @@ def inputs_from_snapshot(snap: Dict, direction: str, bid, ask, now: datetime,
             r_multiples=tuple(P.dec(x) for x in r["r_multiples"]),
             min_rr=P.dec(r["min_rr"]),
             barrier_offset_atr=P.dec(r["barrier_offset_atr"])),
-        rates={}, day_trade_cfg=day_trade_cfg)
+        rates={k: P.Rate(value=P.dec(v["value"]),
+                         observed_at=datetime.fromisoformat(v["observed_at"]),
+                         valid_until=gen + timedelta(minutes=snap["valid_minutes"]),
+                         source="取り込んだ5分足の終値")
+               for k, v in (snap.get("rates") or {}).items()},
+        day_trade_cfg=day_trade_cfg)
+
+
+def preview(snap: Dict, direction: str, spread: float, now: datetime,
+            day_trade_cfg: Dict) -> Dict:
+    """ボードがそろった向きで見た場合の**利確の目安**（チャートに引く。利用者の指定、2026-10-11）。
+
+    計画ボタンと同じ計算・同じ止める理由を使う。違うのは売値・買値だけで、売値＝写しの終値、
+    買値＝それに平常時のスプレッドを足した値（MT4 の値ではない）。**計画が出ない条件なら
+    目安も出さない**（理由を返す）。
+    """
+    tick = P.dec(snap["instrument"]["price_tick"])
+    bid = P.dec(snap["reference_close"])
+    ask = bid + P.dec(str(spread))
+    ask = (ask / tick).to_integral_value(rounding="ROUND_CEILING") * tick
+    i = inputs_from_snapshot(snap, direction, str(bid), str(ask), now, day_trade_cfg)
+    d = P.decide(i, now)
+    if d.status != "PLAN_OK" or d.plan is None:
+        return {"status": d.status, "direction": direction,
+                "stops": [s.message for s in d.stops]}
+    p = d.plan
+    return {"status": d.status, "direction": direction, "bid": str(bid), "ask": str(ask),
+            "entry": str(p.entry), "stop": str(p.stop), "stop_basis": p.stop_basis,
+            "targets": [{"label": t.label, "price": str(t.price), "net_rr": str(t.net_rr),
+                         "capped_by": t.capped_by} for t in p.targets]}

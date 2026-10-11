@@ -57,7 +57,7 @@ def test_the_plan_calculator_is_inside_the_page():
     html = P.render([board()], AT, snapshots={"GBPJPY": {"pair": "GBPJPY", "x": "</script>"}})
     assert 'class="plan" data-pair="GBPJPY"' in html
     assert "window.PlanCalc" in html and "window.SNAPS=" in html
-    assert "</script>\"" not in html and "<\/script>" in html   # JSON の中の閉じタグは無害化
+    assert "</script>\"" not in html and r"<\/script>" in html   # JSON の中の閉じタグは無害化
     assert P.render([board()], AT).count('class="plan"') == 0      # 写しが無ければ欄も出さない
 
 
@@ -236,21 +236,32 @@ def test_the_range_column_says_it_is_not_compared():
     assert "レンジは アプリ＝20日の位置％ ／ ブリーフ＝向き で、比べていない" in html
 
 
-def test_a_watch_pair_is_marked_and_gets_no_plan():
-    """様子を見る銘柄は並べるが、前には出さない（計画のボタンを出さない）。"""
+def test_pairs_are_marked_by_group_and_cost_tier():
+    """今日選んだ非円建てと、費用の区分（実測）の印。6本とも計画のボタンを出す。"""
     w = board()
-    w["pair"], w["tier"] = "EURJPY", "watch"
-    html = P.render([board(), w], AT, extras=extras(),
-                    snapshots={"GBPJPY": {"pair": "GBPJPY", "account": {}}})
-    assert "様子を見る・計画なし" in html
-    assert 'data-pair="GBPJPY"' in html and 'data-pair="EURJPY"' not in html
+    w["pair"], w["tier"], w["group"] = "EURUSD", "off", "pick"
+    snaps = {"GBPJPY": {"pair": "GBPJPY", "account": {}}, "EURUSD": {"pair": "EURUSD", "account": {}}}
+    html = P.render([board(), w], AT, extras=extras(), snapshots=snaps)
+    assert "今日の選択" in html and "費用：重い区分" in html
+    assert 'data-pair="GBPJPY"' in html and 'data-pair="EURUSD"' in html
 
 
-def test_the_page_lists_focus_then_watch(cfg):
-    from app import dashboard_page, focus as F
-    focus, watch = dashboard_page.targets(cfg)
-    assert not set(focus) & set(watch)
-    assert watch == [s for s in F.symbols(cfg, "watch") if s not in focus]
+def test_the_pick_panel_says_it_is_not_a_probability():
+    ex = extras()
+    ex["pick"] = {"status": "today", "fx_day": "2026-09-27", "picked_at": "2026-09-27T23:40:00+00:00",
+                  "pairs": ["EURUSD"],
+                  "table": [{"pair": "EURUSD", "reach": 1.31, "tp1_pips": 9.2, "room_pips": 12.0,
+                             "spread_pips": 1.4},
+                            {"pair": "USDCAD", "reach": 0.8, "tp1_pips": 15.0, "room_pips": 12.0,
+                             "spread_pips": 3.5},
+                            {"pair": "NZDUSD", "reason": "足が古い（300分前）"}]}
+    w = board()
+    w["pair"], w["group"] = "EURUSD", "pick"
+    html = P.render([board(), w], AT, extras=ex)
+    assert "PICK · この時間帯の非円建て3本" in html and "当たる確率でも、向きの予測でもありません" in html
+    assert "1.31" in html and "NZDUSD（足が古い（300分前））" in html
+    # 円建て → 選び方 → 非円建ての順
+    assert html.index("◆ GBPJPY · M15") < html.index("PICK · この時間帯") < html.index("◆ EURUSD · M15")
 
 
 # ------------------------------------------------ チャート（ローソク足・価格の目盛り）
@@ -279,3 +290,13 @@ def test_old_bars_without_the_open_still_draw():
 def test_price_ticks_are_round_numbers():
     assert P._ticks(208.31, 209.07) == [208.4, 208.6, 208.8, 209.0]
     assert P._ticks(1.0, 1.0) == []
+
+
+def test_a_closed_market_is_not_called_live():
+    """どの銘柄も市場が閉まっていれば CLOSED（写しが新しくても LIVE と出さない）。"""
+    b = board()
+    b["facts"]["market_open"] = False
+    assert 'data-closed="1"' in P.render([b], AT)
+    b["facts"]["market_open"] = True
+    assert 'data-closed="0"' in P.render([b], AT)
+    assert "CLOSED" in P._JS_UI

@@ -32,7 +32,7 @@ pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="node が�
 def snapshot(pair="USDJPY", base="USD", close="150.005", atr="0.100", tick="0.001",
              pip="0.01", unit=10000, long_swing=None, long_barrier=None,
              short_swing=None, short_barrier=None, excluded=False, balance="3000000",
-             risk="0.5", wide="0.05", course="L25_10k", gen=GEN):
+             risk="0.5", wide="0.05", course="L25_10k", gen=GEN, quote="JPY", rates=None):
     from app import day_trade
 
     deadline = day_trade.exit_deadline(ONE_AM, gen)
@@ -42,7 +42,7 @@ def snapshot(pair="USDJPY", base="USD", close="150.005", atr="0.100", tick="0.00
         "reference_close": close, "atr": atr,
         "long": {"swing": long_swing, "barrier": long_barrier},
         "short": {"swing": short_swing, "barrier": short_barrier},
-        "instrument": {"symbol": pair, "base": base, "quote": "JPY", "pip": pip,
+        "instrument": {"symbol": pair, "base": base, "quote": quote, "pip": pip,
                        "price_tick": tick, "contract_unit": unit, "min_qty": 1,
                        "qty_step": 1, "max_qty": 100, "course": course,
                        "verified_on": "2026-09-14"},
@@ -59,6 +59,8 @@ def snapshot(pair="USDJPY", base="USD", close="150.005", atr="0.100", tick="0.00
         "deadline": deadline.isoformat(),
         "next_rollover": (day_trade.rollover_start(gen) + timedelta(days=1)).isoformat(),
         "min_minutes_to_exit": 90,
+        "rates": {k: {"value": v, "observed_at": (gen - timedelta(minutes=5)).isoformat()}
+                  for k, v in (rates or {}).items()},
     }
 
 
@@ -195,3 +197,58 @@ def test_a_snapshot_built_from_real_analysis_matches(cfg, mock_provider):
         py, _ = run_py({**c, "snap": snap})
         assert [s["code"] for s in j["stops"]] == [s["code"] for s in py["stops"]]
         assert comparable_plan(j["plan"]) == comparable_plan(py["plan"])
+
+
+# ------------------------------------------------ 円建てでない銘柄（2026-10-09）
+
+
+def test_non_jpy_pairs_use_the_rates_in_the_snapshot():
+    """EURUSD・USDCHF。損益は決済通貨→円、証拠金は基軸通貨→円。どちらも写しのレート。"""
+    rng = random.Random(20261009)
+    cases = []
+    for _ in range(300):
+        pair, base, quote, mid, rates = rng.choice([
+            ("EURUSD", "EUR", "USD", 1.12, {"USDJPY": "158.252", "EURJPY": "177.314"}),
+            ("GBPUSD", "GBP", "USD", 1.32, {"USDJPY": "158.252", "GBPJPY": "209.209"}),
+            ("USDCHF", "USD", "CHF", 0.80, {"USDJPY": "158.252", "CHFJPY": "197.81"}),
+        ])
+        atr = round(mid * rng.uniform(0.0003, 0.003), 5)
+        close = round(mid + rng.uniform(-atr, atr), 5)
+        bid = round(close + rng.uniform(-atr, atr), 5)
+        ask = round(bid + rng.choice([0.00014, 0.00028, 0.0003]), 5)
+        snap = snapshot(pair=pair, base=base, quote=quote, unit=10000, tick="0.00001",
+                        pip="0.0001", close=f"{close:.5f}", atr=f"{atr:.5f}", wide="0.0005",
+                        balance=str(rng.choice([1000000, 3000000, 12345678])),
+                        risk=rng.choice(["0.5", "1"]), rates=rates)
+        cases.append({"snap": snap, "dir": rng.choice(["LONG", "SHORT"]),
+                      "bid": f"{bid:.5f}", "ask": f"{ask:.5f}",
+                      "now": (GEN + timedelta(minutes=rng.randint(0, 25))).isoformat()})
+    check(cases)
+    ok = [r for r in run_js(cases) if r["status"] == "PLAN_OK"]
+    assert len(ok) > 20
+
+
+def test_a_missing_rate_stops_the_plan_in_both():
+    """円換算のレートが無ければ止める（1.0 では代用しない）。"""
+    for rates in ({}, {"USDJPY": "158.252"}):            # 証拠金の EURJPY が無い場合も
+        snap = snapshot(pair="EURUSD", base="EUR", quote="USD", tick="0.00001", pip="0.0001",
+                        close="1.12000", atr="0.00100", wide="0.0005", rates=rates)
+        cases = [{"snap": snap, "dir": "LONG", "bid": "1.12000", "ask": "1.12014",
+                  "now": GEN.isoformat()}]
+        check(cases)
+        assert "CONVERSION_MISSING" in [s["code"] for s in run_js(cases)[0]["stops"]]
+
+
+def test_the_loss_in_yen_uses_the_rate_with_stress():
+    """EURUSD 買い：損失の円＝距離×通貨量×USDJPY×1.01（切り上げ）。"""
+    snap = snapshot(pair="EURUSD", base="EUR", quote="USD", tick="0.00001", pip="0.0001",
+                    close="1.12000", atr="0.00100", wide="0.0005", balance="3000000",
+                    rates={"USDJPY": "150", "EURJPY": "168"})
+    c = {"snap": snap, "dir": "LONG", "bid": "1.12000", "ask": "1.12014", "now": GEN.isoformat()}
+    check([c])
+    p = run_js([c])[0]["plan"]
+    assert p is not None
+    from decimal import Decimal, ROUND_CEILING
+    dist = Decimal(p["entry"]) - Decimal(p["stop"]) + 2 * Decimal("0.00002")
+    want = (dist * p["units"] * Decimal("150") * Decimal("1.01")).to_integral_value(ROUND_CEILING)
+    assert p["loss_jpy"] == int(want)

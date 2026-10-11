@@ -31,6 +31,7 @@ _BRIEF_LEAN = {"up": "▲ 上方向", "down": "▼ 下方向", "neutral": "■ �
                "conflict": "■ 対立"}
 _SESSION = {"tokyo": "東京", "london": "ロンドン", "newyork": "NY"}
 _SEG_END = {"tokyo": "→ロンドン", "london": "→NY", "newyork": "→刻限"}
+_TIER_CHIP = {"watch": "費用：様子を見る区分", "off": "費用：重い区分"}
 _KEYS = (("trend", "トレンド"), ("momentum", "モメンタム"),
          ("fundamentals", "ファンダ"), ("range", "レンジ"))
 
@@ -97,10 +98,12 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
     W, H = 1000, 100                     # 図形の座標（枠いっぱいに引き伸ばす）
     bars = ch["bars"]
     start = datetime.fromisoformat(ch["day_start"])
-    end_min = 19 * 60
+    # 刻限の位置と、横軸の長さは別。**刻限より後の足**（閉場前の金曜の夜など）があれば
+    # 横軸はそこまで伸ばすが、刻限の線は刻限に引く（2026-10-11 まで右端に引いていた）
+    dl_min = 19 * 60
     if ch.get("deadline"):
-        end_min = max(60, int((datetime.fromisoformat(ch["deadline"]) - start).total_seconds() // 60))
-    end_min = max(end_min, bars[-1][0] + 15)
+        dl_min = max(60, int((datetime.fromisoformat(ch["deadline"]) - start).total_seconds() // 60))
+    end_min = max(dl_min, bars[-1][0] + 15)
     op = ch.get("open")
 
     lo = min(x[2] for x in bars)
@@ -114,7 +117,7 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
         cone.append((t0, band["close"], band["close"]))
         for lv in band["levels"]:
             t = t0 + 15 * lv["bars"]
-            if t > end_min:
+            if t > dl_min:
                 break
             cone.append((t, lv["high"], lv["low"]))
         if len(cone) > 1:
@@ -126,6 +129,27 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
             if lo - 0.15 * span <= l["price"] <= hi + 0.15 * span]
     for l in keep:
         lo, hi = min(lo, l["price"]), max(hi, l["price"])
+    # 利確の目安（そろった向きがある時だけ）。建値・損切り・TP1 は必ず枠に入れ、TP2・3 は近ければ
+    tp = b.get("tp_preview") if (b.get("tp_preview") or {}).get("status") == "PLAN_OK" else None
+    tp_lines = []
+    if tp:
+        span = (hi - lo) or 1e-6
+        must = [float(tp["stop"]), float(tp["targets"][0]["price"])]
+        lo, hi = min([lo] + must), max([hi] + must)
+        tp_lines = [("sl", "損切り", float(tp["stop"]))]
+        for t in tp["targets"]:
+            v = float(t["price"])
+            if t is tp["targets"][0] or lo - 0.35 * span <= v <= hi + 0.35 * span:
+                tp_lines.append(("tp", t["label"], v))
+                lo, hi = min(lo, v), max(hi, v)
+    # フィボナッチ（直近24時間）。枠の近くの線だけ引き、全部の値は図の下に書く
+    fb = ch.get("fib") or {}
+    span = (hi - lo) or 1e-6
+    fib_lines = [l for l in fb.get("levels") or []
+                 if lo - 0.1 * span <= l["price"] <= hi + 0.1 * span]
+    for l in fib_lines:
+        lo, hi = min(lo, l["price"]), max(hi, l["price"])
+    ext = [l["price"] for l in fb.get("levels") or [] if l["kind"] == "extend"]
     pad = (hi - lo) * 0.06 or 1e-6
     lo, hi = lo - pad, hi + pad
 
@@ -165,6 +189,20 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
         below = " below" if y < 9 else ""             # 上の端では線の下に書く（切れないように）
         html.append(f'<span class="lvt {_e(l.get("kind"))}{below}" style="top:{py(y)}">'
                     f'{_e(l.get("label"))} {_fmt(l["price"], d)}</span>')
+    if len(ext) == 2:                            # 伸びの帯（127.2〜161.8%）。枠の中だけ塗る
+        y1, y2 = sorted((Y(ext[0]), Y(ext[1])))
+        y1, y2 = max(y1, 0), min(y2, H)
+        if y2 > y1:
+            svg.append(f'<rect class="fibz" x="0" y="{y1:.2f}" width="{W}" height="{y2 - y1:.2f}"/>')
+    for l in fib_lines:
+        y = Y(l["price"])
+        svg.append(f'<line class="fib" x1="0" y1="{y:.2f}" x2="{W}" y2="{y:.2f}"/>')
+        html.append(f'<span class="fbt{" below" if y < 9 else ""}" style="top:{py(y)}">Fib {l["ratio"] * 100:.1f}% '
+                    f'{_fmt(l["price"], d)}</span>')
+    for k, lab, v in tp_lines:
+        y = Y(v)
+        svg.append(f'<line class="{k}" x1="0" y1="{y:.2f}" x2="{W}" y2="{y:.2f}"/>')
+        html.append(f'<span class="tpt {k}{" below" if y < 9 else ""}" style="top:{py(y)}">{_e(lab)} {_fmt(v, d)}</span>')
     # ローソク足。始値が無い古い写しは、1つ前の終値で代える
     bw = max(1.0, W * 15 / end_min * 0.62)
     prev = op
@@ -184,7 +222,7 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
     cls = "up" if op is not None and last_c >= op else "down"
     svg.append(f'<polyline class="px {cls}" points="{path}"/>')
     svg.append(f'<line class="lastl {cls}" x1="0" y1="{Y(last_c):.2f}" x2="{W}" y2="{Y(last_c):.2f}"/>')
-    dlx = X(end_min)
+    dlx = X(dl_min)
     svg.append(f'<line class="dl" x1="{dlx:.1f}" y1="0" x2="{dlx:.1f}" y2="{H}"/>')
     svg.append("</svg>")
     html.append(f'<span class="dlt" style="left:{px(dlx)}">刻限</span>')
@@ -197,6 +235,48 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
 
 
 # ------------------------------------------------------------ 欄
+
+
+def _tp_note(b: Dict) -> str:
+    """そろった向きがある時の、利確の目安（チャートの緑＝利確・赤＝損切りの線）。"""
+    tp = b.get("tp_preview")
+    if not tp:
+        return ""
+    d = b.get("digits", 3)
+    long = tp.get("direction") == "LONG"
+    head = "▲ 上でそろっています。買いで見た場合" if long else "▼ 下でそろっています。売りで見た場合"
+    if tp.get("status") != "PLAN_OK":
+        why = "・".join(_e(str(x).replace("**", "")) for x in tp.get("stops") or []) or "理由の記載なし"
+        return f'<div class="lvnote tpbox{"" if long else " short"}"><b>{head}の利確の目安は出しません</b>：{why}</div>'
+    tg = " ／ ".join(f'{_e(t["label"])} <b class="n">{_fmt(float(t["price"]), d)}</b>'
+                     f'<span class="muted">（費用込み {_e(t["net_rr"])} 倍'
+                     f'{"・" + _e(t["capped_by"]) + "の手前" if t.get("capped_by") else ""}）</span>'
+                     for t in tp["targets"])
+    return (f'<div class="lvnote tpbox{"" if long else " short"}"><b>{head}の利確の目安</b>：'
+            f'建値 <b class="n">{_fmt(float(tp["entry"]), d)}</b> ／ 損切り <b class="n">'
+            f'{_fmt(float(tp["stop"]), d)}</b><span class="muted">（{_e(tp["stop_basis"])}）</span> ／ {tg}'
+            f'<br><span class="muted">計画ボタンと同じ計算。売値＝最後の終値、買値＝平常時のスプレッドを足した仮の値で、'
+            f'MT4 の値ではありません。実際の値は計画ボタンに MT4 の売値・買値を入れて出してください。'
+            f'儲かる根拠ではありません。</span></div>')
+
+
+def _fib_note(b: Dict, ch: Optional[Dict]) -> str:
+    """フィボナッチの値（図に入りきらない線も含めて全部）。"""
+    fb = (ch or {}).get("fib")
+    if not fb:
+        return ""
+    d = b.get("digits", 3)
+    up = fb["direction"] == "up"
+    ret = " ／ ".join(f'{l["ratio"] * 100:.1f}% <b class="n">{_fmt(l["price"], d)}</b>'
+                      for l in fb["levels"] if l["kind"] == "retrace")
+    ext = " ／ ".join(f'{l["ratio"] * 100:.1f}% <b class="n">{_fmt(l["price"], d)}</b>'
+                      for l in fb["levels"] if l["kind"] == "extend")
+    return (f'<div class="lvnote"><b class="fibk">Fib 予測レンジ</b>'
+            f'<span class="muted">（直近24時間 安値 {_fmt(fb["low"], d)} → 高値 {_fmt(fb["high"], d)}、'
+            f'{"上げ" if up else "下げ"}の脚）</span><br>'
+            f'{"押し" if up else "戻り"}：{ret}<br>伸び（紫の帯）：{ext}'
+            f'<br><span class="muted">フィボナッチは慣習の線で、このアプリでは当たりやすさを測っていません。'
+            f'向きの予測ではありません。</span></div>')
 
 
 def _band_note(ch: Optional[Dict]) -> str:
@@ -222,8 +302,12 @@ def _pair_panel(b: Dict, ch: Optional[Dict]) -> str:
     chg_html = ("" if chg is None else
                 f'<span class="chg {"up" if chg >= 0 else "down"}">'
                 f'{"+" if chg >= 0 else ""}{chg:.2f}%</span>')
-    watch = ('<span class="chip sm watch">様子を見る・計画なし</span> '
-             if b.get("tier") == "watch" else "")
+    # 印：今日選んだ非円建て／費用の区分（実測。支援する区分には付けない）
+    watch = ""
+    if b.get("group") == "pick":
+        watch += '<span class="chip sm pick">今日の選択</span> '
+    if b.get("tier") in _TIER_CHIP:
+        watch += f'<span class="chip sm watch">{_TIER_CHIP[b["tier"]]}</span> '
     head = (f'<div class="ph"><h2>◆ {_e(b["pair"])} · M15 · その日の値動き</h2>{watch}'
             f'{_chip(st, v.get("label", ""))}</div>')
     price = (f'<div class="pxrow"><span class="big">{_fmt(f.get("price"), d)}</span>{chg_html}'
@@ -253,7 +337,7 @@ def _pair_panel(b: Dict, ch: Optional[Dict]) -> str:
     facts.append("指標 " + (f'<b>{_e(f["next_event"])}</b>' if f.get("next_event")
                            else f'<span class="muted">{_e(f.get("event_note") or "—")}</span>'))
     return (f'<section class="panel pair {_STATE_CLASS.get(st, "mixed")}">{head}{price}{note}'
-            f'{_chart(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
+            f'{_chart(b, ch)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
             f'<ul class="facts">{"".join(f"<li>{x}</li>" for x in facts)}</ul></section>')
 
 
@@ -384,6 +468,56 @@ def _tape(rows: List[Dict], digits: Dict[str, int]) -> str:
             f'<tbody>{body}</tbody></table></div></section>')
 
 
+def _pick(p: Optional[Dict]) -> str:
+    """非円建ての選び方と、候補の表。**当たる確率ではない**と書く。"""
+    if not p:
+        return ""
+    status = p.get("status")
+    when = _jst(p.get("picked_at"), "%m/%d %H:%M")
+    sess = _SESSION.get(p.get("session"), "")
+    head = {"today": f"{_e(p.get('fx_day'))} {sess or 'この'}の時間帯に選んだ3本（{when} 時点の足で）",
+            "previous": f"この時間帯の候補の足がまだそろわないので、前の選択（{when}"
+                        f"{'・' + sess if sess else ''}）のまま",
+            }.get(status, "選べませんでした（候補の足が足りません）")
+    chosen = set(p.get("pairs") or [])
+    over = [r["pair"] for r in p.get("table") or []
+            if r.get("pair") in (p.get("pairs") or []) and r.get("cost_ok") is False]
+    warn = ""
+    if over:
+        warn = (f'<p class="warnline">費用の条件（スプレッドが ATR の上限以下）を満たす銘柄が足りず、'
+                f'{"、".join(_e(x) for x in over)} は条件を超えたまま並べています。'
+                f'<b>この銘柄はボードが除外になり、計画は止まります。</b></p>')
+    rows = []
+    for r in (p.get("table") or [])[:8]:
+        if "reach" not in r:
+            continue
+        mark = "◆" if r["pair"] in chosen else ""
+        sa = r.get("spread_atr")
+        cost = ("" if sa is None else
+                f'<span class="{"" if r.get("cost_ok", True) else "down"}">{sa * 100:.0f}%</span>')
+        rows.append(f'<tr class="{"on" if mark else ""}"><td>{mark} {_e(r["pair"])}</td>'
+                    f'<td class="n"><b>{r["reach"]:.2f}</b></td><td class="n">{r["tp1_pips"]:.1f}</td>'
+                    f'<td class="n">{r["room_pips"]:.1f}</td><td class="n">{r["spread_pips"]:.1f}</td>'
+                    f'<td class="n">{cost}</td></tr>')
+    skipped = [r for r in p.get("table") or [] if "reach" not in r]
+    skip = ""
+    if skipped:
+        skip = ('<p class="muted">候補にしなかった銘柄：'
+                + "、".join(f'{_e(r["pair"])}（{_e(r["reason"])}）' for r in skipped[:6])
+                + ("…" if len(skipped) > 6 else "") + "</p>")
+    table = ""
+    if rows:
+        table = ('<div class="scroll"><table><thead><tr><th>銘柄</th><th>届きやすさ</th>'
+                 '<th>TP1まで(pips)</th><th>刻限までの幅(pips)</th><th>スプレッド(pips)</th><th>スプレッド÷ATR</th></tr></thead>'
+                 f'<tbody>{"".join(rows)}</tbody></table></div>')
+    return (f'<section class="panel pick"><div class="ph"><h2>◆ PICK · この時間帯の非円建て3本</h2>'
+            f'<span class="muted">{head}</span></div>{warn}{table}'
+            f'<p class="muted">届きやすさ＝刻限までに約8割が収まった値動きの幅 ÷ 利確（TP1）までの距離'
+            f'（損切り・スプレッド・滑り込み。計画と同じ規則）。1を超えるほど TP1 がふだんの幅の内側。'
+            f'エンジンの費用の条件（スプレッド÷ATR が上限以下。赤は超過）を満たす銘柄を先に選びます。'
+            f'<b>当たる確率でも、向きの予測でもありません。</b>時間帯（東京・ロンドン・NY）の始まりごとに選び直します。</p>{skip}</section>')
+
+
 def _score(s: Optional[Dict]) -> str:
     if not s:
         return ""
@@ -444,24 +578,25 @@ _CSS = """
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.55 -apple-system,BlinkMacSystemFont,
 "Hiragino Sans","Noto Sans JP","Segoe UI",sans-serif}
-.muted{color:var(--tx2);font-size:12px}.n,.big,.mk,.px{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--tx2);font-size:12.5px}.n,.big,.mk,.px{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .up{color:var(--up)}.down{color:var(--down)}
 .top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;
 padding:max(10px,env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid var(--line);background:#080d16}
 .brand{display:flex;gap:10px;align-items:center}
 .logo{width:34px;height:34px;border-radius:7px;background:#1b4fd8;color:#fff;display:grid;place-items:center;
 font:700 14px var(--mono)}
-.brand .t1{font:600 10.5px var(--mono);letter-spacing:.12em;color:var(--tx2)}
+.brand .t1{font:600 11.5px var(--mono);letter-spacing:.12em;color:var(--tx2)}
 .brand .t2{font:700 16px var(--mono);letter-spacing:.04em}
-.brand .t3{font-size:11.5px;color:var(--tx2)}
+.brand .t3{font-size:12.5px;color:var(--tx2)}
 a.kpi.home{color:var(--acc);text-decoration:none;border-color:rgba(57,194,242,.5)}a.kpi.home b{color:var(--acc)}
 .kpis{display:flex;flex-wrap:wrap;gap:6px}
 .kpi{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;min-width:92px}
-.kpi .l{display:block;font:600 10px var(--mono);letter-spacing:.1em;color:var(--tx2)}
+.kpi .l{display:block;font:600 11px var(--mono);letter-spacing:.1em;color:var(--tx2)}
 .kpi b{font:700 15px var(--mono)}
-.state{font:700 11px var(--mono);padding:2px 8px;border-radius:4px;border:1px solid var(--up);color:var(--up)}
+.state{font:700 12px var(--mono);padding:2px 8px;border-radius:4px;border:1px solid var(--up);color:var(--up)}
 .stamp.stale .state{border-color:var(--down);color:var(--down)}
-.stamp .warn{display:block;color:var(--down);font-size:11.5px}
+.stamp.closed .state{border-color:var(--tx2);color:var(--tx2)}.stamp.closed .warn{color:var(--tx2)}
+.stamp .warn{display:block;color:var(--down);font-size:12.5px}
 .clock{font:700 20px var(--mono)}
 .ticker{display:flex;gap:16px;align-items:center;overflow-x:auto;white-space:nowrap;padding:6px 14px;
 border-bottom:1px solid var(--line);background:#070c14;font:12px var(--mono)}
@@ -470,14 +605,17 @@ border-bottom:1px solid var(--line);background:#070c14;font:12px var(--mono)}
 main{display:grid;gap:10px;padding:10px 12px max(30px,env(safe-area-inset-bottom));
 grid-template-columns:repeat(12,minmax(0,1fr));max-width:1500px;margin:0 auto}
 .panel{grid-column:span 12;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+@media (min-width:1300px){.pair{grid-column:span 4!important}}
 @media (min-width:980px){.pair{grid-column:span 6}.matrix,.gauges{grid-column:span 6}.planbox{grid-column:span 12}
-.tape{grid-column:span 8}.score{grid-column:span 4}.feed,.events{grid-column:span 6}}
+.tape{grid-column:span 12}.score,.feed,.events{grid-column:span 4}}
 .ph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
-.ph h2{margin:0;font:700 11.5px var(--mono);letter-spacing:.1em;color:#a9bbd3}
+.ph h2{margin:0;font:700 12.5px var(--mono);letter-spacing:.1em;color:#a9bbd3}
 .chip{font:700 12px var(--mono);padding:2px 9px;border-radius:4px;border:1px solid var(--line2);white-space:nowrap}
 .chip.excluded{color:var(--tx2)}.chip.up{color:var(--up);border-color:rgba(47,212,126,.5)}
 .chip.down{color:var(--down);border-color:rgba(242,85,90,.5)}.chip.mixed{color:var(--wait);border-color:rgba(245,182,43,.5)}
-.chip.sm{padding:0 6px;font-size:11px}.chip.watch{color:var(--acc);border-color:rgba(57,194,242,.5)}
+.chip.sm{padding:0 6px;font-size:12px}.chip.pick{color:#c9a5ff;border-color:rgba(201,165,255,.5)}
+.warnline{margin:4px 0 8px;padding:6px 10px;border:1px solid rgba(242,85,90,.45);border-radius:6px;font-size:12.5px;background:rgba(242,85,90,.06)}
+.pick tr.on td{background:rgba(57,194,242,.07)}.pick tr.on td:first-child{color:var(--acc);font-weight:700}.chip.watch{color:var(--acc);border-color:rgba(57,194,242,.5)}
 .pair{border-top:2px solid var(--line2)}.pair.up{border-top-color:var(--up)}.pair.down{border-top-color:var(--down)}
 .pair.mixed{border-top-color:var(--wait)}.pair.excluded{border-top-color:#3a4558}
 .pxrow{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.pxrow .big{font-size:26px;font-weight:700}
@@ -495,25 +633,35 @@ background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow
 .chart .px{fill:none;stroke-width:1;opacity:.35}.chart .px.up{stroke:var(--up)}.chart .px.down{stroke:var(--down)}
 .chart .lastl{stroke-dasharray:1 3;opacity:.7}.chart .lastl.up{stroke:var(--up)}.chart .lastl.down{stroke:var(--down)}
 .chart .dl{stroke:var(--wait);stroke-dasharray:2 3}
-.plot>span{position:absolute;font:10px/1 var(--mono);white-space:nowrap;pointer-events:none}
+.plot>span{position:absolute;font:10.5px/1 var(--mono);white-space:nowrap;pointer-events:none}
 .plot .lvt{right:4px;transform:translateY(-120%);color:var(--tx2);background:rgba(14,22,34,.75);padding:1px 3px;border-radius:2px}
 .plot .lvt.support{color:#5fd99a}.plot .lvt.resistance{color:#f08589}
+.chart .fib{stroke:rgba(201,165,255,.45);stroke-dasharray:1 3}.chart .fibz{fill:rgba(201,165,255,.07)}
+.chart .tp{stroke:rgba(47,212,126,.8);stroke-dasharray:6 3}.chart .sl{stroke:rgba(242,85,90,.8);stroke-dasharray:6 3}
+.plot .fbt{left:4px;transform:translateY(-120%);color:#c9a5ff;background:rgba(14,22,34,.75);padding:1px 3px;border-radius:2px}
+.plot .tpt{left:50%;transform:translate(-50%,-120%);font-weight:700;background:rgba(14,22,34,.85);padding:1px 4px;border-radius:2px}
+.plot .fbt.below{transform:translateY(20%)}.plot .tpt.below{transform:translate(-50%,20%)}
+.plot .tpt.tp{color:var(--up)}.plot .tpt.sl{color:var(--down)}
+.lvnote{margin:4px 0;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:12.5px;background:var(--panel2)}
+.lvnote.tpbox{border-color:rgba(47,212,126,.45)}.lvnote.tpbox.short{border-color:rgba(242,85,90,.45)}
+.lvnote b.n{font-family:var(--mono)}.lvnote .fibk{color:#c9a5ff}
 .plot .lvt.below{transform:translateY(20%)}.plot .dlt{bottom:3px;transform:translateX(-105%);color:var(--wait)}
 .plot .dot{width:7px;height:7px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
 .plot .dot.up{background:var(--up)}.plot .dot.down{background:var(--down)}
 .yax{position:relative;border-left:1px solid var(--line)}
-.yax span{position:absolute;left:5px;transform:translateY(-50%);font:10px/1 var(--mono);color:var(--mute)}
+.yax span{position:absolute;left:5px;transform:translateY(-50%);font:10.5px/1 var(--mono);color:var(--mute)}
 .yax .last{left:0;right:0;padding:3px 4px;color:#04110a;font-weight:700;border-radius:0 3px 3px 0;z-index:1}
 .yax .last.up{background:var(--up)}.yax .last.down{background:var(--down);color:#1a0405}
-.xax{position:relative;grid-column:1/-1;border-top:1px solid var(--line)}
-.xax span{position:absolute;top:3px;transform:translateX(-50%);font:10px/1 var(--mono);color:var(--mute)}
+.xax{position:relative;grid-column:1;border-top:1px solid var(--line)}
+.chartbox::after{content:"";border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.xax span{position:absolute;top:3px;transform:translateX(-50%);font:10.5px/1 var(--mono);color:var(--mute)}
 .xax span:first-child{transform:none;left:3px!important}
 .nochart{padding:30px;text-align:center;color:var(--tx2);border:1px dashed var(--line);border-radius:6px;margin:6px 0}
 .fs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0}
 .f{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--panel2);min-width:0}
-.f .lab{display:block;font:600 10px var(--mono);letter-spacing:.08em;color:var(--tx2)}
-.f .mk{font-size:20px;font-weight:700;line-height:1.2}.f .tx{display:block;font-size:11.5px;color:#b7c4d6}
-.f .src{display:block;font-size:10.5px;color:var(--mute);overflow-wrap:anywhere}
+.f .lab{display:block;font:600 11px var(--mono);letter-spacing:.08em;color:var(--tx2)}
+.f .mk{font-size:20px;font-weight:700;line-height:1.2}.f .tx{display:block;font-size:12.5px;color:#b7c4d6}
+.f .src{display:block;font-size:11.5px;color:var(--mute);overflow-wrap:anywhere}
 .v-up,.v-up .mk{color:var(--up)}.v-down,.v-down .mk{color:var(--down)}.v-neutral,.v-neutral .mk{color:var(--wait)}
 .v-none,.v-none .mk,.v-conflict{color:var(--mute)}
 .why{font-size:12.5px;border-radius:6px;padding:5px 9px;margin:6px 0;background:var(--panel2)}
@@ -522,7 +670,7 @@ background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow
 .facts{list-style:none;margin:6px 0 0;padding:0;font-size:12.5px;display:flex;gap:4px 16px;flex-wrap:wrap}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-thead th{font:600 10.5px var(--mono);letter-spacing:.08em;color:var(--tx2)}
+thead th{font:600 11.5px var(--mono);letter-spacing:.08em;color:var(--tx2)}
 .scroll{overflow-x:auto}
 .matrix td{font:700 15px var(--mono)}.matrix td .sep{color:var(--mute);margin:0 4px;font-weight:400}
 .matrix td.diff{outline:1px solid var(--down);outline-offset:-3px}.matrix .fact{color:var(--tx);font-size:13px}
@@ -534,7 +682,7 @@ thead th{font:600 10.5px var(--mono);letter-spacing:.08em;color:var(--tx2)}
 .bar .tick{position:absolute;top:0;bottom:0;width:2px;background:#0a0f18}
 .bar.pos{background:linear-gradient(90deg,rgba(242,85,90,.3),#131c2a 30%,#131c2a 70%,rgba(47,212,126,.3))}
 .bar .mark{position:absolute;top:-2px;bottom:-2px;width:3px;margin-left:-1.5px;background:var(--tx)}
-.scale{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--mute)}
+.scale{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--mute)}
 .ladder{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ladder ul{list-style:none;margin:4px 0 0;padding:0;font-size:12px}
 .plans{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .plan{border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:0}
@@ -547,26 +695,26 @@ border:1px solid #2f6fe0;background:rgba(47,111,224,.12)}
 font:inherit;font-size:14px;cursor:pointer}
 .plan .dirs .on.up{border-color:var(--up);color:var(--up)}.plan .dirs .on.down{border-color:var(--down);color:var(--down)}
 .plan .qs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.plan label{display:grid;gap:3px;color:var(--tx2);font-size:11.5px}
+.plan label{display:grid;gap:3px;color:var(--tx2);font-size:12.5px}
 .plan input{background:#05080e;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:8px 10px;
 font:16px var(--mono);min-width:0}
 .plan .go{justify-self:start;border-color:#2f6fe0}.plan .howto{margin:0}
 .plan .r{margin:0 0 12px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px}
 .plan .r.ok{border-color:rgba(47,212,126,.5)}.plan .r table td,.plan .r table th{white-space:normal}
-.plan .loss{color:var(--down)}.plan .gain{color:var(--up)}.plan code{font-size:10.5px;color:var(--tx2)}
+.plan .loss{color:var(--down)}.plan .gain{color:var(--up)}.plan code{font-size:11.5px;color:var(--tx2)}
 .acct{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 10px}
-.acct label{display:grid;gap:3px;color:var(--tx2);font-size:11.5px}
+.acct label{display:grid;gap:3px;color:var(--tx2);font-size:12.5px}
 .acct input{background:#05080e;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:8px 10px;
 font:16px var(--mono);min-width:0}.acct p{grid-column:1/-1;margin:0}
 .score .stats{display:flex;gap:14px}.score .stats .big{font-size:26px;font-weight:700;display:block}
-.score .lab,.kv span{color:var(--tx2);font-size:11.5px}
+.score .lab,.kv span{color:var(--tx2);font-size:12.5px}
 .kv{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:5px 0;border-bottom:1px solid var(--line)}
-.kv span{flex:1 1 140px}.kv b{font-family:var(--mono)}.kv em{font-style:normal;color:var(--tx2);font-size:11.5px}
+.kv span{flex:1 1 140px}.kv b{font-family:var(--mono)}.kv em{font-style:normal;color:var(--tx2);font-size:12.5px}
 .evs{list-style:none;margin:0;padding:0}.evs li{padding:5px 0;border-bottom:1px solid var(--line);font-size:12.5px;
 display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
-.imp{font:700 10px var(--mono);padding:1px 6px;border-radius:3px}.imp.hi{background:rgba(242,85,90,.18);color:var(--down)}
+.imp{font:700 11px var(--mono);padding:1px 6px;border-radius:3px}.imp.hi{background:rgba(242,85,90,.18);color:var(--down)}
 .imp.md{background:rgba(245,182,43,.15);color:var(--wait)}.cd{margin-left:auto}
-footer{max-width:1500px;margin:0 auto;padding:0 14px 30px;font-size:11.5px;color:var(--tx2)}
+footer{max-width:1500px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:var(--tx2)}
 @media (max-width:560px){.fs{grid-template-columns:1fr 1fr}.chartbox{grid-template-rows:200px 18px;grid-template-columns:minmax(0,1fr) 56px}.xax span:nth-child(even){display:none}
 .kpis{display:grid;grid-template-columns:1fr 1fr;width:100%}.kpi{min-width:0}.brand .t3{display:none}}
 """
@@ -582,9 +730,10 @@ function jstNow(){return new Date(Date.now()+9*3600000)}
 function left(ms){if(ms<=0)return null;var m=Math.floor(ms/60000);return Math.floor(m/60)+':'+two(m%60)}
 function tick(){
  var a=Math.floor((Date.now()-G.getTime())/60000),box=document.querySelector('.stamp');
- box.querySelector('.age').textContent=a<1?'1分以内':a+'分前';
+ box.querySelector('.age').textContent=a<1?'1分以内':a<120?a+'分前':Math.floor(a/60)+'時間前';
  var st=box.querySelector('.state'),w=box.querySelector('.warn');
- if(a>=MAX){box.classList.add('stale');st.textContent='STALE';w.textContent='PC からの更新が止まっているか、取引時間外です。計画は出しません（写しが'+MAX+'分より古い）。';}
+ if(document.body.dataset.closed==='1'){box.classList.add('closed');box.classList.remove('stale');st.textContent='CLOSED';w.textContent='市場が閉まっています（週末・休場）。値は最後の取引時間のものです。';}
+ else if(a>=MAX){box.classList.add('stale');st.textContent='STALE';w.textContent='PC からの更新が止まっているか、取引時間外です。計画は出しません（写しが'+MAX+'分より古い）。';}
  else{box.classList.remove('stale');st.textContent='LIVE';w.textContent='';}
  var j=jstNow(),c=document.querySelector('.clock');
  if(c)c.textContent=two(j.getUTCHours())+':'+two(j.getUTCMinutes())+':'+two(j.getUTCSeconds());
@@ -701,8 +850,15 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
               if home else '')
            + '</div></header>')
 
-    panels = "".join(_pair_panel(b, charts.get(b["pair"])) for b in boards) or \
-        '<section class="panel"><p class="muted">ボードがありません。</p></section>'
+    # 円建ての3本 → 今日の選び方 → 非円建ての3本
+    first = [b for b in boards if b.get("group") != "pick"]
+    picked = [b for b in boards if b.get("group") == "pick"]
+    panels = "".join(_pair_panel(b, charts.get(b["pair"])) for b in first)
+    if extras and extras.get("pick"):
+        panels += _pick(extras["pick"])
+    panels += "".join(_pair_panel(b, charts.get(b["pair"])) for b in picked)
+    if not boards:
+        panels = '<section class="panel"><p class="muted">ボードがありません。</p></section>'
     if boards:
         panels += _matrix(boards) + _gauges(boards)
     panels += _plan_box(boards, snapshots)
@@ -713,6 +869,8 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
         panels += _events(evs)
 
     verdict_note = boards[0]["verdict"].get("note", "") if boards else ""
+    # どの銘柄も市場が閉まっている（週末・休場）なら、写しが新しくても LIVE とは出さない
+    closed = "1" if boards and not any((b.get("facts") or {}).get("market_open") for b in boards) else "0"
     scripts = ""
     if snapshots:
         scripts = (f"<script>window.SNAPS={_json_for_script(snapshots)};</script>"
@@ -731,7 +889,7 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FX ボード">
 <style>{_CSS}</style></head>
-<body data-generated="{gen.isoformat()}" data-valid="{valid_minutes}">
+<body data-generated="{gen.isoformat()}" data-valid="{valid_minutes}" data-closed="{closed}">
 {top}{_ticker(boards)}
 <main>{panels}</main>
 <footer>

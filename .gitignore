@@ -30,3 +30,7 @@ board_page.html
 
 # 記録簿の控え
 database/*.bak*
+
+# ダッシュボードの「今日の非円建て3本」（毎朝作り直す）
+data/daily_pick.json
+data/daily_pick.tmp

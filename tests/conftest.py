@@ -127,3 +127,11 @@ def _fresh_calendar(tmp_path_factory):
     yield
     news.CALENDAR_PATH = original
     news.clear_cache()
+
+
+@pytest.fixture(autouse=True)
+def _scratch_daily_pick(tmp_path, monkeypatch):
+    """**試験で本物の「今日の非円建て3本」（data/daily_pick.json）を書き換えない。**"""
+    from app import daily_pick
+
+    monkeypatch.setattr(daily_pick, "PICK_FILE", tmp_path / "daily_pick.json")

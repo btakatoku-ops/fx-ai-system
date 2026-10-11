@@ -60,6 +60,37 @@ def forecast_band(cfg: TradingConfig, bars) -> Optional[Dict]:
             "measured_at": fc.get("measured_at")}
 
 
+FIB_RETRACE = (0.382, 0.5, 0.618)
+FIB_EXTEND = (1.272, 1.618)
+
+
+def fib(bars, n: int = 96) -> Optional[Dict]:
+    """直近 n 本（M15 で24時間）の高値・安値から引くフィボナッチ（利用者の指定、2026-10-11）。
+
+    安値のあとに高値が来ていれば上げの脚、逆なら下げの脚。押し・戻し（38.2/50/61.8%）は
+    脚の中、伸び（127.2/161.8%）は脚の先。**慣習の線で、このアプリでは当たりやすさを測って
+    いない**（画面にもそう書く）。
+    """
+    win = list(bars)[-n:]
+    if len(win) < 8:
+        return None
+    hi_i = max(range(len(win)), key=lambda i: float(win[i].high))
+    lo_i = min(range(len(win)), key=lambda i: float(win[i].low))
+    hi, lo = float(win[hi_i].high), float(win[lo_i].low)
+    rng = hi - lo
+    if rng <= 0:
+        return None
+    up = lo_i < hi_i
+    levels = []
+    for r in FIB_RETRACE:
+        levels.append({"ratio": r, "kind": "retrace", "price": hi - r * rng if up else lo + r * rng})
+    for e in FIB_EXTEND:
+        levels.append({"ratio": e, "kind": "extend", "price": lo + e * rng if up else hi - e * rng})
+    return {"direction": "up" if up else "down", "high": hi, "low": lo,
+            "high_at": win[hi_i].timestamp.isoformat(), "low_at": win[lo_i].timestamp.isoformat(),
+            "bars": len(win), "levels": levels}
+
+
 def chart(cfg: TradingConfig, provider, symbol: str, facts: Dict) -> Optional[Dict]:
     """その取引日（閉場中なら直近の取引日）の M15 の動き。"""
     try:
@@ -83,6 +114,7 @@ def chart(cfg: TradingConfig, provider, symbol: str, facts: Dict) -> Optional[Di
                   float(b.high), float(b.low), float(b.close), float(b.open)] for b in day],
         "last_bar_at": day[-1].timestamp.isoformat(),
         "band": forecast_band(cfg, bars),
+        "fib": fib(bars),
     }
 
 

@@ -58,6 +58,21 @@
 
   function stop(code, message) { return { code: code, message: message }; }
 
+  // ccy を円に直すレート（ストレス前）。plan_calc._rate と同じ順で調べる
+  function rateFor(snap, ccy, ask, now, gen) {
+    var cur = snap.account.currency;
+    if (ccy === cur) return { value: fromInt(1) };
+    var sym = ccy + cur;
+    if (sym === snap.instrument.symbol) return { value: ask };   // 自分自身（手で入れた買値）
+    var r = (snap.rates || {})[sym];
+    if (!r) return { stop: stop("CONVERSION_MISSING", ccy + " を円に直すレート（" + sym + "）がありません。1.0 では代用しません") };
+    if (now.getTime() >= gen.getTime() + snap.valid_minutes * 60000)
+      return { stop: stop("CONVERSION_STALE", sym + " のレートの有効期限が切れています") };
+    var v = dec(r.value);
+    if (!isDec(v) || v <= 0n) return { stop: stop("PLAN_INVALID_NUMBER", sym + " のレートが正の有限の数ではありません") };
+    return { value: v };
+  }
+
   function draft(snap, direction, bidStr, askStr, now) {
     var ins = snap.instrument, acc = snap.account, r = snap.rules, c = snap.costs;
     var side = direction === "LONG" ? snap.long : snap.short;
@@ -138,12 +153,12 @@
       raw.push({ price: price, capped: capped });
     }
 
-    // G 円換算（決済通貨が円の銘柄だけ。それ以外は止める）
+    // G 円換算（損失は大きく、利益は小さく）。円建てでない銘柄は写しのレートを使う
     var stress = dec(c.conversion_stress);
     var one = fromInt(1);
-    if (ins.quote !== acc.currency)
-      return { plan: null, stops: [stop("CONVERSION_MISSING", ins.quote + " を円に直すレートがありません。1.0 では代用しません")] };
-    var lossRate = one + stress, gainRate = one - stress;
+    var qr = rateFor(snap, ins.quote, ask, now, gen);
+    if (qr.stop) return { plan: null, stops: [qr.stop] };
+    var lossRate = mul(qr.value, one + stress), gainRate = mul(qr.value, one - stress);
 
     // H 数量
     var maxRisk = dec(acc.max_risk_pct);
@@ -182,10 +197,9 @@
       return { plan: null, stops: [stop("NET_RR_BELOW_MIN", "費用込みの TP1 までの比が " + targets[0].net_rr + " で、下限 " + r.min_rr + " に届きません")] };
 
     // I 証拠金
-    var mRate;
-    if (ins.base === acc.currency) mRate = one;
-    else if (ins.base + acc.currency === ins.symbol) mRate = ask;
-    else return { plan: null, stops: [stop("CONVERSION_MISSING", ins.base + " を円に直すレートがありません。1.0 では代用しません")] };
+    var br = rateFor(snap, ins.base, ask, now, gen);
+    if (br.stop) return { plan: null, stops: [br.stop] };
+    var mRate = br.value;
     var margin = intUp(mul(mul(units * mRate, one + stress), dec(acc.margin_rate)));
     var marginPct = div(margin * S * 100n, balance);
     if (marginPct > dec(acc.max_margin_pct))
