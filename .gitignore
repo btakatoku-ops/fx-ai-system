@@ -34,3 +34,7 @@ database/*.bak*
 # ダッシュボードの「今日の非円建て3本」（毎朝作り直す）
 data/daily_pick.json
 data/daily_pick.tmp
+
+# ブリーフの記録とファンダの見立て（ブリーフの文面・リンクを含む）。リポジトリは公開なので載せない（2026-10-12）
+data/briefs/
+data/fundamentals.json
