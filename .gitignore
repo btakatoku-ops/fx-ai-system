@@ -38,3 +38,9 @@ data/daily_pick.tmp
 # ブリーフの記録とファンダの見立て（ブリーフの文面・リンクを含む）。リポジトリは公開なので載せない（2026-10-12）
 data/briefs/
 data/fundamentals.json
+
+# 再生の結果（毎週の週のまとめで作り直して積み重ねる。足から作れる）
+logs/replay/
+
+# 検証用の長い1時間足（scripts/fetch_long.py。画面では使わない）
+data/long/

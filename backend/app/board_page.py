@@ -150,6 +150,13 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
     for l in fib_lines:
         lo, hi = min(lo, l["price"]), max(hi, l["price"])
     ext = [l["price"] for l in fb.get("levels") or [] if l["kind"] == "extend"]
+    # H1 の EMA20・50（トレンドの根拠）。大きく離れた値で枠をつぶさないよう、近いものだけ入れる
+    span = (hi - lo) or 1e-6
+    ema_pts = [p for p in ch.get("ema") or [] if p[0] <= end_min]
+    for _t, a, c in ema_pts:
+        for v in (a, c):
+            if lo - 0.5 * span <= v <= hi + 0.5 * span:
+                lo, hi = min(lo, v), max(hi, v)
     pad = (hi - lo) * 0.06 or 1e-6
     lo, hi = lo - pad, hi + pad
 
@@ -189,6 +196,10 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
         below = " below" if y < 9 else ""             # 上の端では線の下に書く（切れないように）
         html.append(f'<span class="lvt {_e(l.get("kind"))}{below}" style="top:{py(y)}">'
                     f'{_e(l.get("label"))} {_fmt(l["price"], d)}</span>')
+    for k, idx in (("ema20", 1), ("ema50", 2)):  # H1 の EMA（確定した時刻に点を置く）
+        pts = " ".join(f"{X(p[0]):.1f},{Y(p[idx]):.2f}" for p in ema_pts)
+        if len(ema_pts) >= 2:
+            svg.append(f'<polyline class="{k}" points="{pts}"/>')
     if len(ext) == 2:                            # 伸びの帯（127.2〜161.8%）。枠の中だけ塗る
         y1, y2 = sorted((Y(ext[0]), Y(ext[1])))
         y1, y2 = max(y1, 0), min(y2, H)
@@ -228,10 +239,136 @@ def _chart(b: Dict, ch: Optional[Dict]) -> str:
     html.append(f'<span class="dlt" style="left:{px(dlx)}">刻限</span>')
     html.append(f'<span class="dot {cls}" style="left:{px(X(last_t + 7.5))};top:{py(Y(last_c))}"></span>')
     yax.append(f'<span class="last {cls}" style="top:{py(Y(last_c))}">{_fmt(last_c, d)}</span>')
+    if ema_pts:
+        e20, e50 = ema_pts[-1][1], ema_pts[-1][2]
+        html.append(f'<span class="emat">H1 EMA20 <b class="e20">{_fmt(e20, d)}</b> '
+                    f'EMA50 <b class="e50">{_fmt(e50, d)}</b> '
+                    f'{"（20が上）" if e20 > e50 else "（20が下）"}</span>')
     label = f'{_e(b["pair"])} のその日の値動き（15分足）。最後 {_fmt(last_c, d)}'
+    return (_chart_main(svg, html, yax, xax, label)
+            + _osc_strips(ch, X, end_min))
+
+
+def _chart_main(svg, html, yax, xax, label) -> str:
     return (f'<div class="chartbox" role="img" aria-label="{label}"><div class="plot">{"".join(svg)}'
             f'{"".join(html)}</div><div class="yax">{"".join(yax)}</div>'
             f'<div class="xax">{"".join(xax)}</div></div>')
+
+
+def _osc_strips(ch: Dict, X, end_min: int) -> str:
+    """チャートの下に RSI と MACD の小窓（ボードの「モメンタム」の根拠）。横軸はチャートと同じ。
+
+    RSI が上の線（55）以上で MACD が0より上なら ▲、下の線（45）以下で0より下なら ▼、
+    それ以外は ■（board.momentum_factor と同じ決まり）。"""
+    osc = [p for p in ch.get("osc") or [] if p[1] is not None and p[2] is not None and p[0] <= end_min]
+    if len(osc) < 2:
+        return ""
+    W, H = 1000, 100
+    up_at, down_at = ch.get("rsi_up", 55), ch.get("rsi_down", 45)
+
+    def ry(v):                                   # RSI は 0〜100 を枠に合わせる（20〜80 を主に）
+        return H * (80 - max(20, min(80, v))) / 60
+
+    pts = " ".join(f"{X(t + 7.5):.1f},{ry(r):.2f}" for t, r, _ in osc)
+    rsi_svg = (f'<svg class="chart" viewBox="0 0 {W} {H}" preserveAspectRatio="none" aria-hidden="true">'
+               f'<rect class="rsin" x="0" y="{ry(up_at):.2f}" width="{W}" height="{ry(down_at) - ry(up_at):.2f}"/>'
+               f'<line class="g" x1="0" y1="{ry(50):.2f}" x2="{W}" y2="{ry(50):.2f}"/>'
+               f'<polyline class="rsil" points="{pts}"/></svg>')
+    last_r = osc[-1][1]
+    rk = "up" if last_r >= up_at else "down" if last_r <= down_at else "mid"
+    rsi_ax = (f'<span style="top:{ry(up_at) / H * 100:.1f}%">{up_at:g}</span>'
+              f'<span style="top:{ry(down_at) / H * 100:.1f}%">{down_at:g}</span>'
+              f'<span class="last {rk}" style="top:{ry(last_r) / H * 100:.1f}%">{last_r:.0f}</span>')
+    m = max(abs(h) for _, _, h in osc) or 1e-9
+    bw = max(1.0, W * 15 / end_min * 0.62)
+    bars = "".join(
+        f'<rect class="mh {"u" if h >= 0 else "d"}" x="{X(t + 7.5) - bw / 2:.1f}" '
+        f'y="{50 - max(h, 0) / m * 46:.2f}" width="{bw:.1f}" height="{max(abs(h) / m * 46, 0.4):.2f}"/>'
+        for t, _, h in osc)
+    macd_svg = (f'<svg class="chart" viewBox="0 0 {W} {H}" preserveAspectRatio="none" aria-hidden="true">'
+                f'<line class="g" x1="0" y1="50" x2="{W}" y2="50"/>{bars}</svg>')
+    last_h = osc[-1][2]
+    mk = "up" if last_h > 0 else "down"
+    return (f'<div class="oscbox" aria-label="RSI と MACD（M15）">'
+            f'<div class="plot">{rsi_svg}<span class="osct">RSI(14)<i class="wide"> 帯＝{down_at:g}〜{up_at:g}（そろっていない側）</i></span></div>'
+            f'<div class="yax">{rsi_ax}</div>'
+            f'<div class="plot">{macd_svg}<span class="osct">MACD ヒストグラム</span></div>'
+            f'<div class="yax"><span class="last {mk}" style="top:50%">{"0より上" if last_h > 0 else "0より下"}</span></div>'
+            f'</div>')
+
+
+def _dxy_note(b: Dict, dxy: Optional[Dict]) -> str:
+    """ドル指数（DXY）の直近4時間の向きを、その銘柄のドルの側に当てて見せる。**参考・測定中。**
+
+    ドルを含まない銘柄（GBPJPY・EURJPY など）には出さない。判定（そろう・除外）には入れない。"""
+    pair = b["pair"]
+    if not dxy or dxy.get("change") is None or "USD" not in (pair[:3], pair[3:]):
+        return ""
+    ch = dxy["change"]
+    usd = "ドル高" if ch > 0 else "ドル安" if ch < 0 else "変わらず"
+    if ch == 0:
+        mark, cls = "■", "mid"
+    else:
+        up = (ch > 0) == pair.startswith("USD")       # USDxxx はドル高で上、xxxUSD はドル高で下
+        mark, cls = ("▲", "up") if up else ("▼", "down")
+    sp = dxy.get("spark") or []
+    svg = ""
+    if len(sp) >= 2:
+        lo_, hi_ = min(sp), max(sp)
+        rng = (hi_ - lo_) or 1e-9
+        pts = [(i * 120 / (len(sp) - 1), 26 - (v - lo_) / rng * 24) for i, v in enumerate(sp)]
+        k = max(0, len(pts) - 1 - DXY_SPARK_TAIL)
+        svg = ('<svg class="dxysp" viewBox="0 0 120 28" aria-hidden="true">'
+               f'<polyline class="all" points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in pts)}"/>'
+               f'<polyline class="tail {cls}" points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in pts[k:])}"/></svg>')
+    pct = dxy.get("pct")
+    stale = (f'<span class="warnword">（最後の足が{_jst(dxy.get("last_at"), "%m/%d %H:%M")}で古い）</span>'
+             if dxy.get("stale") else "")
+    st = dxy.get("stats")
+    stats = ""
+    if st:
+        stats = (f'<br><span class="muted">過去の再生（{_e(st["measured"])} 時点・{st["n"]}件）：向きの的中 '
+                 f'{st["dir_rate"] * 100:.0f}%（95%の幅 {st["dir_lo"] * 100:.0f}〜{st["dir_hi"] * 100:.0f}%）、'
+                 f'TP1 {st["win_rate"] * 100:.0f}%・平均 {st["avg_r"]:+.2f}R（同じ時刻・向きを問わず {st["base_r"]:+.2f}R）。'
+                 f'<b>単独では費用を取り戻せていません。</b>毎週土曜に測り直します。</span>')
+    lg = dxy.get("long")
+    if lg and lg.get("a_dir") is not None and lg.get("b_dir") is not None:
+        works = (lg["a_edge"] or 0) > 0 and (lg["b_edge"] or 0) > 0
+        stats += (f'<br><span class="{"muted" if works else "warnword"}">約2年の検証（{_e(lg["first"])}〜{_e(lg["last"])}、'
+                  f'{_e(lg["split"])} の前と後に分けて）：向きの的中 {lg["a_dir"] * 100:.0f}%・{lg["b_dir"] * 100:.0f}%、'
+                  f'向きを問わず建てた場合との差 {lg["a_edge"]:+.2f}R・{lg["b_edge"]:+.2f}R。'
+                  + ("前後とも上回った。" if works else
+                     "<b>長い期間では効果が確認できません</b>（直近8週の良さは、その時期の相場による可能性が高い）。")
+                  + '</span>')
+    return (f'<div class="lvnote dxy"><div class="dxyrow"><div><b>ドル指数（DXY）の直近4時間</b> '
+            f'<b class="n {"up" if ch > 0 else "down" if ch < 0 else ""}">{ch:+.3f}'
+            f'{"" if pct is None else f"（{pct:+.2f}%）"}</b> {usd}{stale}<br>'
+            f'この銘柄では <b class="dxymark {cls}">{mark}</b>'
+            f'<span class="muted">（{_e(pair)} は{"ドル高で上" if pair.startswith("USD") else "ドル高で下"}）</span>'
+            f'</div>{svg}</div>'
+            f'<span class="muted">参考・測定中。ボードの判定（そろう・除外）には入れていません。'
+            f'太い線＝直近4時間（24時間の動きの中で）。</span>{stats}</div>')
+
+
+DXY_SPARK_TAIL = 4
+
+
+def _vol_note(ch: Optional[Dict]) -> str:
+    """値動きの大きさ（いまの ATR ÷ 20日の中央値）。**向きではなく、費用の重さの目安。**"""
+    v = (ch or {}).get("vol")
+    if not v:
+        return ""
+    r = v["ratio"]
+    label = {"high": "普段より大きい：費用の負担が軽い",
+             "low": "普段より小さい：費用の負担が重い",
+             "normal": "普段どおり"}[v["kind"]]
+    pos = max(0.0, min(1.0, r / 2.0)) * 100
+    return (f'<div class="lvnote vol {v["kind"]}"><b>値動きの大きさ</b> '
+            f'<b class="n">{r:.2f}倍</b>（いまの ATR ÷ 直近{v["days"]:g}日の中央値）— {label}'
+            f'<div class="vgauge"><span class="vlo"></span><span class="vhi"></span>'
+            f'<i style="left:{pos:.1f}%"></i></div>'
+            f'<span class="muted">過去の再生（1,876時刻）では、1.2倍以上の場面は向きを問わず平均 −0.10R、'
+            f'普段どおりは −0.23R（費用の割合が小さくなるため）。向きは示しません。</span></div>')
 
 
 # ------------------------------------------------------------ 欄
@@ -295,7 +432,7 @@ def _chip(state: str, label: str) -> str:
     return f'<span class="chip {c}">{_STATE_MARK.get(state, "■")} {_e(label)}</span>'
 
 
-def _pair_panel(b: Dict, ch: Optional[Dict]) -> str:
+def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None) -> str:
     f, v, d = b["facts"], b["verdict"], b.get("digits", 3)
     st = v.get("state", "mixed")
     chg = f.get("today_change_pct")
@@ -337,7 +474,7 @@ def _pair_panel(b: Dict, ch: Optional[Dict]) -> str:
     facts.append("指標 " + (f'<b>{_e(f["next_event"])}</b>' if f.get("next_event")
                            else f'<span class="muted">{_e(f.get("event_note") or "—")}</span>'))
     return (f'<section class="panel pair {_STATE_CLASS.get(st, "mixed")}">{head}{price}{note}'
-            f'{_chart(b, ch)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
+            f'{_chart(b, ch)}{_vol_note(ch)}{_dxy_note(b, dxy)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
             f'<ul class="facts">{"".join(f"<li>{x}</li>" for x in facts)}</ul></section>')
 
 
@@ -538,8 +675,66 @@ def _score(s: Optional[Dict]) -> str:
             f'<p class="muted">コイン投げなら半分。件数が少ないうちは結論を出しません。</p></section>')
 
 
+def _verify(v: Optional[Dict], score: Optional[Dict]) -> str:
+    """測った結果（毎週土曜の検証）。**このボードが「当たる」とは言えないことを、数字のまま出す。**"""
+    if not v:
+        return ""
+
+    def r(x):
+        return "—" if x is None else f"{x:+.2f}R"
+
+    items = []
+    lg = v.get("long")
+    if lg:
+        found = lg.get("winners") or []
+        head = ("費用を超える決まりが見つかっています：" + "、".join(_e(x) for x in found)) if found else             "<b>いまのところ、費用を超えて勝てる決まりは見つかっていません。</b>"
+        items.append(f'<li>{head}<span class="muted">（約2年の1時間足、{_e(lg.get("first"))}〜{_e(lg.get("last"))}。'
+                     f'前半で見つけ・後半で確かめる）</span></li>')
+        items.append(f'<li>ボードの判定（テクニカル2つがそろう）：前半 {r(lg.get("lean_a"))}・後半 {r(lg.get("lean_b"))}'
+                     f'<span class="muted">（同じ時刻に向きを問わず建てた場合 {r(lg.get("base_a"))}・{r(lg.get("base_b"))}）</span></li>')
+    rp = v.get("replay")
+    if rp and rp.get("n"):
+        items.append(f'<li>直近約8週の再生（{rp.get("boards")}枚）：ボードが「そろった」{rp["n"]}件で {r(rp.get("avg_r"))}'
+                     f'<span class="muted">（向きを問わず {r(rp.get("base_r"))}・除外 {rp.get("excluded_share", 0) * 100:.0f}%）</span></li>')
+    sw = v.get("swing")
+    if sw:
+        items.append(f'<li>費用の重さ：日計りで向きを問わず建てると {r((lg or {}).get("base_b"))}、'
+                     f'5日持つと {r(sw.get("base_b"))}<span class="muted">（スワップ込み・後半）。保有を延ばすと費用は軽くなるが、'
+                     f'向きを当てる力は見つかっていない</span></li>')
+    if score:
+        b = score.get("brief") or {}
+        items.append(f'<li>ブリーフの向きの採点：{b.get("n", 0)} / {score.get("min_samples", 30)} 件'
+                     f'<span class="muted">（30件たまったら当たる割合を出す）</span></li>')
+    dates = sorted({x.get("date") for x in v.values() if isinstance(x, dict) and x.get("date")})
+    return (f'<section class="panel verify"><div class="ph"><h2>◆ VERIFY · 測った結果</h2>'
+            f'<span class="muted">毎週土曜に測り直す（最新 {_e(dates[-1] if dates else "—")}）</span></div>'
+            f'<ul class="vlist">{"".join(items)}</ul>'
+            f'<p class="muted">ボードは「やめる時を知る」「正しい幅と数量で計画する」ための道具です。'
+            f'向きの予測には使えないことが、ここまでの検証で分かっています。</p></section>')
+
+
+def _health_bar(items: Optional[List[Dict]]) -> str:
+    """仕組みの不調があれば、ページの一番上に赤い帯で出す（無ければ何も出さない）。"""
+    bad = [x for x in items or [] if x.get("state") == "warn"]
+    if not bad:
+        return ""
+    return ('<div class="healthbar" role="alert">⚠ 仕組みの不調：'
+            + "／".join(f'{_e(x["label"])}（{_e(x["detail"])}）' for x in bad)
+            + '<span class="muted">　詳しくは FEED 欄</span></div>')
+
+
+def _health_rows(items: Optional[List[Dict]]) -> str:
+    if not items:
+        return ""
+    mark = {"ok": ("✓", "up"), "warn": ("⚠", "down"), "idle": ("…", "muted")}
+    rows = "".join(f'<tr><th>{_e(x["label"])}</th><td class="{mark.get(x["state"], ("?", ""))[1]}">'
+                   f'{mark.get(x["state"], ("?", ""))[0]}</td><td>{_e(x["detail"])}</td></tr>' for x in items)
+    return (f'<h3 class="sub">仕組みの状態</h3><div class="scroll"><table class="health"><tbody>{rows}</tbody></table></div>'
+            f'<p class="muted">✓＝動くはずの時刻に動いた　⚠＝止まっているか失敗　…＝動く時刻ではない（夜・週末）</p>')
+
+
 def _feed(boards: List[Dict], charts: Dict[str, Dict], snapshots: Dict[str, Dict],
-          gen: datetime, valid_minutes: int) -> str:
+          gen: datetime, valid_minutes: int, health_items: Optional[List[Dict]] = None) -> str:
     rows = []
     for b in boards:
         ch = charts.get(b["pair"]) or {}
@@ -552,7 +747,8 @@ def _feed(boards: List[Dict], charts: Dict[str, Dict], snapshots: Dict[str, Dict
             f'<div class="kv"><span>この写し</span><b>{gen.astimezone(JST):%m/%d %H:%M}</b>'
             f'<em data-since="{gen.isoformat()}">—</em></div>'
             f'<p class="muted">PC が5分ごとに足を取り込み、15分ごとにこのページを作り直します'
-            f'（平日 9:05〜翌1:05、朝 8:40）。写しが{valid_minutes}分より古いと計画は出しません。</p></section>')
+            f'（平日 9:05〜翌1:05、朝 8:40）。写しが{valid_minutes}分より古いと計画は出しません。</p>'
+            f'{_health_rows(health_items)}</section>')
 
 
 def _events(evs: List[Dict]) -> str:
@@ -607,7 +803,7 @@ grid-template-columns:repeat(12,minmax(0,1fr));max-width:1500px;margin:0 auto}
 .panel{grid-column:span 12;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
 @media (min-width:1300px){.pair{grid-column:span 4!important}}
 @media (min-width:980px){.pair{grid-column:span 6}.matrix,.gauges{grid-column:span 6}.planbox{grid-column:span 12}
-.tape{grid-column:span 12}.score,.feed,.events{grid-column:span 4}}
+.tape{grid-column:span 12}.verify{grid-column:span 12}.score,.feed,.events{grid-column:span 4}}
 .ph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .ph h2{margin:0;font:700 12.5px var(--mono);letter-spacing:.1em;color:#a9bbd3}
 .chip{font:700 12px var(--mono);padding:2px 9px;border-radius:4px;border:1px solid var(--line2);white-space:nowrap}
@@ -645,6 +841,30 @@ background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow
 .lvnote{margin:4px 0;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:12.5px;background:var(--panel2)}
 .lvnote.tpbox{border-color:rgba(47,212,126,.45)}.lvnote.tpbox.short{border-color:rgba(242,85,90,.45)}
 .lvnote b.n{font-family:var(--mono)}.lvnote .fibk{color:#c9a5ff}
+.chart .ema20{fill:none;stroke:#39c2f2;stroke-width:1.4;opacity:.85}.chart .ema50{fill:none;stroke:#f5b62b;stroke-width:1.4;opacity:.85}
+.plot .emat{left:4px;bottom:3px;color:var(--tx2);background:rgba(14,22,34,.8);padding:1px 4px;border-radius:2px}
+.plot .emat .e20{color:#39c2f2}.plot .emat .e50{color:#f5b62b}
+.oscbox{display:grid;grid-template-columns:minmax(0,1fr) 62px;grid-template-rows:56px 40px;margin:-7px 0 6px;
+background:var(--panel2);border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;overflow:hidden}
+.oscbox .plot{border-top:1px solid var(--line)}.oscbox .yax{border-top:1px solid var(--line)}
+.chart .rsin{fill:rgba(245,182,43,.07)}.chart .rsil{fill:none;stroke:#c9a5ff;stroke-width:1.3}
+.chart .mh.u{fill:rgba(47,212,126,.75)}.chart .mh.d{fill:rgba(242,85,90,.75)}
+.plot .osct{left:4px;top:3px;color:var(--mute)}.osct i{font-style:normal}
+.yax .last.mid{background:#3a4558;color:var(--tx)}
+.lvnote.vol .vgauge{position:relative;height:6px;margin:6px 0 4px;border-radius:3px;
+background:linear-gradient(90deg,rgba(242,85,90,.35) 0 40%,#26344b 40% 60%,rgba(47,212,126,.35) 60% 100%)}
+.lvnote.vol .vgauge i{position:absolute;top:-3px;width:3px;height:12px;background:var(--tx);border-radius:1px;transform:translateX(-50%)}
+.lvnote.vol.high{border-color:rgba(47,212,126,.45)}.lvnote.vol.low{border-color:rgba(242,85,90,.35)}
+.lvnote.dxy{border-color:rgba(57,194,242,.35)}.dxyrow{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.dxysp{width:120px;height:28px;flex:none}.dxysp .all{fill:none;stroke:#56647a;stroke-width:1}
+.dxysp .tail{fill:none;stroke-width:2.2}.dxysp .tail.up{stroke:var(--up)}.dxysp .tail.down{stroke:var(--down)}.dxysp .tail.mid{stroke:var(--wait)}
+.dxymark{font-size:15px}.dxymark.up{color:var(--up)}.dxymark.down{color:var(--down)}.dxymark.mid{color:var(--wait)}
+.warnword{color:var(--wait)}
+.healthbar{background:rgba(242,85,90,.12);border-bottom:1px solid rgba(242,85,90,.5);color:#ffb3b5;
+padding:7px 14px;font-size:13px}
+h3.sub{font:700 11.5px var(--mono);letter-spacing:.08em;color:#a9bbd3;margin:12px 0 4px}
+table.health td:nth-child(2){font-weight:700;text-align:center;width:28px}
+.vlist{margin:4px 0;padding-left:18px}.vlist li{margin:3px 0}
 .plot .lvt.below{transform:translateY(20%)}.plot .dlt{bottom:3px;transform:translateX(-105%);color:var(--wait)}
 .plot .dot{width:7px;height:7px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
 .plot .dot.up{background:var(--up)}.plot .dot.down{background:var(--down)}
@@ -715,7 +935,7 @@ display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
 .imp{font:700 11px var(--mono);padding:1px 6px;border-radius:3px}.imp.hi{background:rgba(242,85,90,.18);color:var(--down)}
 .imp.md{background:rgba(245,182,43,.15);color:var(--wait)}.cd{margin-left:auto}
 footer{max-width:1500px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:var(--tx2)}
-@media (max-width:560px){.fs{grid-template-columns:1fr 1fr}.chartbox{grid-template-rows:200px 18px;grid-template-columns:minmax(0,1fr) 56px}.xax span:nth-child(even){display:none}
+@media (max-width:560px){.fs{grid-template-columns:1fr 1fr}.chartbox{grid-template-rows:200px 18px;grid-template-columns:minmax(0,1fr) 56px}.oscbox{grid-template-columns:minmax(0,1fr) 56px}.osct .wide{display:none}.xax span:nth-child(even){display:none}
 .kpis{display:grid;grid-template-columns:1fr 1fr;width:100%}.kpi{min-width:0}.brand .t3{display:none}}
 """
 
@@ -853,18 +1073,19 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
     # 円建ての3本 → 今日の選び方 → 非円建ての3本
     first = [b for b in boards if b.get("group") != "pick"]
     picked = [b for b in boards if b.get("group") == "pick"]
-    panels = "".join(_pair_panel(b, charts.get(b["pair"])) for b in first)
+    panels = "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy")) for b in first)
     if extras and extras.get("pick"):
         panels += _pick(extras["pick"])
-    panels += "".join(_pair_panel(b, charts.get(b["pair"])) for b in picked)
+    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy")) for b in picked)
     if not boards:
         panels = '<section class="panel"><p class="muted">ボードがありません。</p></section>'
     if boards:
         panels += _matrix(boards) + _gauges(boards)
     panels += _plan_box(boards, snapshots)
     if extras:
-        panels += _tape(extras.get("tape") or [], digits) + _score(extras.get("score"))
-    panels += _feed(boards, charts, snapshots, gen, valid_minutes)
+        panels += (_tape(extras.get("tape") or [], digits) + _verify(extras.get("verify"), extras.get("score"))
+                   + _score(extras.get("score")))
+    panels += _feed(boards, charts, snapshots, gen, valid_minutes, (extras or {}).get("health"))
     if extras:
         panels += _events(evs)
 
@@ -890,7 +1111,7 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
 <meta name="apple-mobile-web-app-title" content="FX ボード">
 <style>{_CSS}</style></head>
 <body data-generated="{gen.isoformat()}" data-valid="{valid_minutes}" data-closed="{closed}">
-{top}{_ticker(boards)}
+{top}{_health_bar((extras or {}).get("health"))}{_ticker(boards)}
 <main>{panels}</main>
 <footer>
 <p>{_e(verdict_note)} 建てなかった日を損とは数えません。</p>

@@ -300,3 +300,132 @@ def test_a_closed_market_is_not_called_live():
     b["facts"]["market_open"] = True
     assert 'data-closed="0"' in P.render([b], AT)
     assert "CLOSED" in P._JS_UI
+
+
+# ------------------------------------------------ 判定の根拠の見える化（EMA・RSI・MACD）と値動きの大きさ
+
+
+def test_the_chart_shows_the_ema_and_the_momentum_strip():
+    ex = extras()
+    ch = ex["charts"]["GBPJPY"]
+    ch["ema"] = [[0, 208.45, 208.40], [60, 208.50, 208.42]]
+    ch["osc"] = [[0, 50.0, 0.01], [15, 58.0, 0.02], [30, 61.0, -0.01]]
+    ch["vol"] = {"ratio": 1.31, "atr": 0.1, "median": 0.076, "kind": "high", "days": 20}
+    html = P.render([board()], AT, extras=ex)
+    assert 'class="ema20"' in html and 'class="ema50"' in html and "H1 EMA20" in html
+    assert 'class="oscbox"' in html and "RSI(14)" in html and "MACD ヒストグラム" in html
+    assert "1.31倍" in html and "費用の負担が軽い" in html and "向きは示しません" in html
+
+
+def test_vol_state_compares_with_the_median(mock_provider):
+    from app import dashboard_data as D
+    bars = mock_provider.get_candles("USDJPY", "M15", limit=2200).candles
+    v = D.vol_state(bars)
+    assert v is not None and v["kind"] in ("low", "normal", "high")
+    assert abs(v["ratio"] - v["atr"] / v["median"]) < 1e-3
+
+
+def test_oscillators_and_ema_are_for_the_day(mock_provider):
+    from app import dashboard_data as D
+    from app.board import fx_day_start
+    bars = mock_provider.get_candles("USDJPY", "M15", limit=300).candles
+    start = fx_day_start(bars[-1].timestamp)
+    osc = D.oscillators(bars, start)
+    assert osc and all(p[0] >= 0 for p in osc)
+    ema = D.h1_ema(mock_provider, "USDJPY", start)
+    assert all(p[0] >= 0 for p in ema)
+
+
+# ------------------------------------------------ ドル指数（参考・測定中）
+
+
+def test_dxy_state_uses_closed_bars_and_the_latest_test(tmp_path):
+    import json
+    from datetime import datetime, timedelta, timezone
+    from app import dashboard_data as D
+    d = tmp_path / "drivers"
+    d.mkdir()
+    t0 = datetime(2026, 10, 15, 0, 0, tzinfo=timezone.utc)
+    rows = "\n".join(f"{(t0 + timedelta(hours=i)).isoformat()},{100 + i * 0.1:.3f}" for i in range(10))
+    (d / "DXY_H1.csv").write_text("timestamp,close\n" + rows + "\n", encoding="utf-8")
+    r = tmp_path / "replay"
+    r.mkdir()
+    (r / "2026-10-18-signals.json").write_text(json.dumps({"dxy_4h": {
+        "signal": {"n": 736, "win_rate": 0.30, "avg_r": -0.14},
+        "same_times": {"avg_r": -0.23},
+        "direction": {"rate": 0.56, "lo": 0.52, "hi": 0.59}, "both_halves_better": True}}), encoding="utf-8")
+    now = t0 + timedelta(hours=8)                                   # 07:00 の足（08:00 確定）まで
+    s = D.dxy_state(now, d, r)
+    assert abs(s["change"] - (100.7 - 100.3)) < 1e-9                # 08:00・09:00 の足は使わない
+    assert not s["stale"] and s["stats"]["n"] == 736
+    assert D.dxy_state(now + timedelta(hours=10), d, r)["stale"]
+
+
+def test_dxy_note_maps_to_the_dollar_side_and_skips_other_pairs():
+    dxy = {"change": 0.12, "pct": 0.12, "close": 100.0, "last_at": "2026-10-15T08:00:00+00:00",
+           "stale": False, "spark": [99.8, 99.9, 100.0, 100.1, 100.0, 100.12], "stats": None}
+    b = board()
+    b["pair"] = "USDJPY"
+    assert "▲" in P._dxy_note(b, dxy) and "ドル高" in P._dxy_note(b, dxy)
+    b["pair"] = "EURUSD"
+    assert '<b class="dxymark down">▼</b>' in P._dxy_note(b, dxy)
+    b["pair"] = "GBPJPY"
+    assert P._dxy_note(b, dxy) == ""                                # ドルを含まない銘柄には出さない
+    b["pair"] = "USDJPY"
+    assert "判定（そろう・除外）には入れていません" in P._dxy_note(b, dxy)
+
+
+def test_dxy_note_shows_the_long_test_when_it_failed():
+    dxy = {"change": 0.12, "pct": 0.12, "close": 100.0, "last_at": "2026-10-15T08:00:00+00:00",
+           "stale": False, "spark": [1, 2, 3], "stats": None,
+           "long": {"first": "2024-01-21", "last": "2026-10-16", "split": "2025-07-01",
+                    "a_n": 4087, "a_dir": 0.51, "a_edge": -0.02, "b_n": 4849, "b_dir": 0.50, "b_edge": -0.03}}
+    b = board()
+    b["pair"] = "USDJPY"
+    html = P._dxy_note(b, dxy)
+    assert "約2年の検証" in html and "長い期間では効果が確認できません" in html
+
+
+# ------------------------------------------------ 測った結果（VERIFY）
+
+
+def test_verify_reads_the_latest_results_and_says_nothing_beats_costs(tmp_path):
+    import json
+    from app import dashboard_data as D
+    (tmp_path / "long-2026-10-18.json").write_text(json.dumps({"first": "2024-01-21", "last": "2026-10-16", "results": {
+        "lean": {"1.5": {"前半": {"avg_r": -0.16, "base_r": -0.18, "edge": 0.02, "r_lo": -0.2},
+                         "後半": {"avg_r": -0.21, "base_r": -0.20, "edge": -0.01, "r_lo": -0.25}}}}}), encoding="utf-8")
+    (tmp_path / "swing-2026-10-18.json").write_text(json.dumps(
+        {"基準：向きを問わず|5|None": {"前半": {"avg_r": -0.02}, "後半": {"avg_r": -0.02}}}), encoding="utf-8")
+    v = D.verify_state(tmp_path)
+    assert v["long"]["winners"] == [] and v["swing"]["base_b"] == -0.02
+    html = P._verify(v, {"brief": {"n": 3}, "min_samples": 30})
+    assert "費用を超えて勝てる決まりは見つかっていません" in html
+    assert "3 / 30 件" in html and "向きの予測には使えない" in html
+
+
+def test_verify_names_a_rule_only_when_it_held_in_both_halves(tmp_path):
+    import json
+    from app import dashboard_data as D
+    good = {"前半": {"edge": 0.05, "r_lo": 0.01}, "後半": {"edge": 0.04, "r_lo": 0.02}}
+    (tmp_path / "long-2026-10-18.json").write_text(json.dumps(
+        {"first": "a", "last": "b", "results": {"x_rule": {"1.5": good}}}), encoding="utf-8")
+    assert D.verify_state(tmp_path)["long"]["winners"] == ["x_rule"]
+
+
+# ------------------------------------------------ 携帯のショートカットが読む状態（status.json）
+
+
+def test_status_alerts_only_when_a_plan_is_possible_or_something_broke():
+    from datetime import datetime, timezone
+    from app import dashboard_page as DP
+    now = datetime(2026, 10, 19, 7, 0, tzinfo=timezone.utc)
+    up = {"pair": "GBPJPY", "verdict": {"state": "aligned_up"}, "tp_preview": {"status": "PLAN_OK"}}
+    no_plan = {"pair": "USDJPY", "verdict": {"state": "aligned_down"}, "tp_preview": {"status": "NO_TRADE"}}
+    excluded = {"pair": "EURJPY", "verdict": {"state": "excluded"}}
+    s = DP.status([up, no_plan, excluded], {"health": []}, now)
+    assert s["alert"] == "あり" and "GBPJPY▲" in s["message"] and "USDJPY" not in s["message"]
+    quiet = DP.status([no_plan, excluded], {"health": [{"label": "朝の処理", "state": "ok"}]}, now)
+    assert quiet["alert"] == "なし" and "見る価値のある場面はありません" in quiet["message"]
+    broken = DP.status([excluded], {"health": [{"label": "ブリーフ", "state": "warn"}]}, now)
+    assert broken["alert"] == "あり" and "仕組みの不調：ブリーフ" in broken["message"]

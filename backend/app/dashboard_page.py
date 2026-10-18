@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from . import daily_pick, dashboard_data, plan_snapshot
@@ -40,8 +40,40 @@ def targets(cfg: TradingConfig, provider=None, now: Optional[datetime] = None
     return jpy, other, pick
 
 
+def status(boards: List[Dict], extras: Dict, now: datetime) -> Dict:
+    """携帯のショートカットが読む小さな状態（公開ページの status.json）。**見る価値がある時だけ知らせる。**
+
+    知らせる条件（どちらか）：
+    1. ボードが「そろった」（除外なし）で、そろった向きの利確の目安が**計画と同じ計算で出せる**銘柄がある
+    2. 仕組みの不調（health の ⚠）がある
+    公開ページと同じ中身しか入れない（誰でも見られる）。"""
+    ready = [b for b in boards
+             if (b.get("verdict") or {}).get("state") in ("aligned_up", "aligned_down")
+             and (b.get("tp_preview") or {}).get("status") == "PLAN_OK"]
+    warns = [x for x in extras.get("health") or [] if x.get("state") == "warn"]
+    parts = []
+    if ready:
+        parts.append("計画が出せる：" + "、".join(
+            f'{b["pair"]}{"▲" if b["verdict"]["state"] == "aligned_up" else "▼"}' for b in ready))
+    if warns:
+        parts.append("仕組みの不調：" + "、".join(x["label"] for x in warns))
+    alert = bool(parts)
+    jst = now.astimezone(timezone(timedelta(hours=9)))
+    return {"generated_at": now.isoformat(), "generated_jst": f"{jst:%m/%d %H:%M}",
+            "alert": "あり" if alert else "なし",
+            "message": (f"FXボード {jst:%H:%M}　" + "／".join(parts)) if alert else
+                       f"FXボード {jst:%H:%M}　見る価値のある場面はありません",
+            "ready": [{"pair": b["pair"], "state": b["verdict"]["state"]} for b in ready],
+            "health_warn": [x["label"] for x in warns]}
+
+
 def build(cfg: TradingConfig, provider, database_url: Optional[str],
           now: Optional[datetime] = None, home: Optional[str] = None) -> str:
+    return build_with_status(cfg, provider, database_url, now, home)[0]
+
+
+def build_with_status(cfg: TradingConfig, provider, database_url: Optional[str],
+                      now: Optional[datetime] = None, home: Optional[str] = None) -> Tuple[str, Dict]:
     now = now or datetime.now(timezone.utc)
     jpy, other, pick = targets(cfg, provider, now)
     syms = jpy + other
@@ -71,5 +103,6 @@ def build(cfg: TradingConfig, provider, database_url: Optional[str],
     note = "" if getattr(provider, "name", "") != "mock" else "（合成データです。実勢ではありません）"
     extras = dashboard_data.collect(cfg, provider, boards, now, database_url)
     extras["pick"] = pick
-    return render(boards, now, note=note, snapshots=snaps,
+    html = render(boards, now, note=note, snapshots=snaps,
                   valid_minutes=plan_snapshot.VALID_MINUTES, extras=extras, home=home)
+    return html, status(boards, extras, now)

@@ -35,6 +35,12 @@ function Step([string]$name, [string[]]$argv) {
 
 Add-Content -Path $log -Encoding utf8 -Value ("=== {0:yyyy-MM-dd HH:mm} 朝の処理 ===" -f (Get-Date))
 Step "相場の取り直し" @("scripts/fetch_yahoo.py", "--out", "data/real", "--pause", "0.6") | Out-Null
+# **長い期間で取った足は、直近の数時間が欠ける。** 朝のボードが毎朝「H1 の最後の足が
+# 3.7〜5.7 時間前で古すぎます」で除外になっていた（2026-09-30〜10-16 の朝の記録15件すべて）。
+# 取引時間中の取り込みと同じく、直近だけ取って継ぎ足してからボードを作る（条件は緩めない）
+$core = (& $py scripts/dashboard_pairs.py 2>$null | Select-Object -Last 1)
+if (-not $core) { $core = "USDJPY,GBPJPY,EURJPY" }
+Step "直近の足の継ぎ足し" @("scripts/fetch_yahoo.py", "--pairs", $core, "--out", "data/real", "--pause", "0.6", "--recent") | Out-Null
 Step "相関の材料" @("scripts/fetch_drivers.py") | Out-Null
 Step "経済指標" @("scripts/fetch_calendar.py") | Out-Null
 $brief = Step "朝の確認" @("scripts/morning_brief.py")

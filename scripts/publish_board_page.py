@@ -23,6 +23,7 @@ gh-pages は**1つのコミットを上書きし続ける**（15分ごとに履�
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -82,10 +83,11 @@ def ensure_worktree() -> None:
         git("worktree", "add", "--orphan", "-b", BRANCH, str(PAGES_DIR))
 
 
-def build_html(cfg) -> str:
-    """作り方は PC の画面（GET /dashboard）と同じ（app/dashboard_page.py）。"""
-    return dashboard_page.build(cfg, build_provider(get_settings()),
-                                get_settings().resolved_database_url)
+def build_html(cfg):
+    """作り方は PC の画面（GET /dashboard）と同じ（app/dashboard_page.py）。
+    返り値は（ページ, 携帯のショートカットが読む状態 status.json の中身）。"""
+    return dashboard_page.build_with_status(cfg, build_provider(get_settings()),
+                                            get_settings().resolved_database_url)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -99,15 +101,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     a = ap.parse_args(argv)
 
     cfg = get_trading_config()
-    html = build_html(cfg)
+    html, status = build_html(cfg)
     if a.no_push:
         out = Path(a.out or ROOT / "board_page.html")
         out.write_text(html, encoding="utf-8")
+        out.with_name("status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"書きました: {out}")
         return 0
 
     ensure_worktree()
     (PAGES_DIR / "index.html").write_text(html, encoding="utf-8")
+    # 携帯のショートカットが読む状態（見る価値がある時だけ通知する。docs は README）
+    (PAGES_DIR / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     (PAGES_DIR / ".nojekyll").write_text("", encoding="utf-8")
     (PAGES_DIR / "404.html").write_text(NOT_FOUND, encoding="utf-8")
     import json as _json
