@@ -429,3 +429,12 @@ def test_status_alerts_only_when_a_plan_is_possible_or_something_broke():
     assert quiet["alert"] == "なし" and "見る価値のある場面はありません" in quiet["message"]
     broken = DP.status([excluded], {"health": [{"label": "ブリーフ", "state": "warn"}]}, now)
     assert broken["alert"] == "あり" and "仕組みの不調：ブリーフ" in broken["message"]
+
+
+def test_status_carries_the_decision_for_market_radar():
+    from datetime import datetime, timezone
+    from app import dashboard_page as DP
+    dec = {"verdict": "skip", "title": "今日は見送り（取引しない）が判断です", "lead": "x",
+           "reasons": ["足が古い（6銘柄）"], "next_look_label": "今日 08:45", "candidates": []}
+    s = DP.status([], {"health": [], "decision": dec}, datetime(2026, 10, 19, 0, 0, tzinfo=timezone.utc))
+    assert s["decision"]["verdict"] == "skip" and s["decision"]["next_look_label"] == "今日 08:45"

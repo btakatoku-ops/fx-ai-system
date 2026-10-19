@@ -47,9 +47,14 @@ def status(boards: List[Dict], extras: Dict, now: datetime) -> Dict:
     1. ボードが「そろった」（除外なし）で、そろった向きの利確の目安が**計画と同じ計算で出せる**銘柄がある
     2. 仕組みの不調（health の ⚠）がある
     公開ページと同じ中身しか入れない（誰でも見られる）。"""
-    ready = [b for b in boards
-             if (b.get("verdict") or {}).get("state") in ("aligned_up", "aligned_down")
-             and (b.get("tp_preview") or {}).get("status") == "PLAN_OK"]
+    dec = extras.get("decision")
+    if dec is not None:
+        names = {c["pair"] for c in dec.get("candidates") or []}
+        ready = [b for b in boards if b["pair"] in names]
+    else:
+        ready = [b for b in boards
+                 if (b.get("verdict") or {}).get("state") in ("aligned_up", "aligned_down")
+                 and (b.get("tp_preview") or {}).get("status") == "PLAN_OK"]
     warns = [x for x in extras.get("health") or [] if x.get("state") == "warn"]
     parts = []
     if ready:
@@ -64,7 +69,11 @@ def status(boards: List[Dict], extras: Dict, now: datetime) -> Dict:
             "message": (f"FXボード {jst:%H:%M}　" + "／".join(parts)) if alert else
                        f"FXボード {jst:%H:%M}　見る価値のある場面はありません",
             "ready": [{"pair": b["pair"], "state": b["verdict"]["state"]} for b in ready],
-            "health_warn": [x["label"] for x in warns]}
+            "health_warn": [x["label"] for x in warns],
+            # Market Radar の FX タブが読んで「FX ボードの今日の判断」として出す（2026-10-19）
+            "decision": ({k: dec.get(k) for k in ("verdict", "title", "lead", "reasons", "next_look_label")}
+                         | {"candidates": [{"pair": c["pair"], "lean": c["lean"]}
+                                           for c in dec.get("candidates") or []]}) if dec else None}
 
 
 def build(cfg: TradingConfig, provider, database_url: Optional[str],
@@ -103,6 +112,11 @@ def build_with_status(cfg: TradingConfig, provider, database_url: Optional[str],
     note = "" if getattr(provider, "name", "") != "mock" else "（合成データです。実勢ではありません）"
     extras = dashboard_data.collect(cfg, provider, boards, now, database_url)
     extras["pick"] = pick
+    from . import decision
+    try:
+        extras["decision"] = decision.decide(boards, extras, now, cfg)
+    except Exception as exc:                      # noqa: BLE001
+        log.warning("今日の判断を出せません: %s", exc)
     html = render(boards, now, note=note, snapshots=snaps,
                   valid_minutes=plan_snapshot.VALID_MINUTES, extras=extras, home=home)
     return html, status(boards, extras, now)

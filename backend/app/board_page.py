@@ -432,7 +432,7 @@ def _chip(state: str, label: str) -> str:
     return f'<span class="chip {c}">{_STATE_MARK.get(state, "■")} {_e(label)}</span>'
 
 
-def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None) -> str:
+def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None, mr: Optional[Dict] = None) -> str:
     f, v, d = b["facts"], b["verdict"], b.get("digits", 3)
     st = v.get("state", "mixed")
     chg = f.get("today_change_pct")
@@ -474,7 +474,7 @@ def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None) -> str:
     facts.append("指標 " + (f'<b>{_e(f["next_event"])}</b>' if f.get("next_event")
                            else f'<span class="muted">{_e(f.get("event_note") or "—")}</span>'))
     return (f'<section class="panel pair {_STATE_CLASS.get(st, "mixed")}">{head}{price}{note}'
-            f'{_chart(b, ch)}{_vol_note(ch)}{_dxy_note(b, dxy)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
+            f'{_chart(b, ch)}{_vol_note(ch)}{_mr_note(b, mr)}{_dxy_note(b, dxy)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
             f'<ul class="facts">{"".join(f"<li>{x}</li>" for x in facts)}</ul></section>')
 
 
@@ -713,6 +713,50 @@ def _verify(v: Optional[Dict], score: Optional[Dict]) -> str:
             f'向きの予測には使えないことが、ここまでの検証で分かっています。</p></section>')
 
 
+def _decision(d: Optional[Dict]) -> str:
+    """今日の FX の判断（一番上）。答えを1つ出す。見送りも正しい判断として出す。"""
+    if not d:
+        return ""
+    tone = {"candidate": "go", "skip": "skip", "wait": "skip", "stale": "bad", "closed": "skip"}.get(d["verdict"], "skip")
+    body = f'<p class="dlead">{_e(d.get("lead", ""))}</p>'
+    if d.get("candidates"):
+        rows = "".join(
+            f'<li><b>{_e(c["pair"])} {"買い" if c["lean"] == "up" else "売り"}</b>'
+            f'<span class="n">　建値 {_fmt(float(c["entry"]), c["digits"]) if c.get("entry") else "—"}'
+            f' ／ 損切り {_fmt(float(c["stop"]), c["digits"]) if c.get("stop") else "—"}'
+            f' ／ TP1 {_fmt(float(c["tp1"]), c["digits"]) if c.get("tp1") else "—"}</span>'
+            f'<br><span class="muted">{_e(c["mr"])}。数字は平常時のスプレッドでの目安。</span></li>'
+            for c in d["candidates"])
+        body += f'<ul class="dlist">{rows}</ul>'
+    if d.get("reasons"):
+        body += '<p class="muted">主な理由：' + "、".join(_e(r) for r in d["reasons"]) + '</p>'
+    if d.get("skipped"):
+        body += ('<p class="muted">見送った候補：' + "、".join(
+            f'{_e(x["pair"])}（{_e(x["why"])}）' for x in d["skipped"]) + '</p>')
+    return (f'<section class="panel decision {tone}"><div class="ph"><h2>◆ DECISION · 今日のFXの判断</h2>'
+            f'<span class="muted">次に見る時刻 <b>{_e(d.get("next_look_label", "—"))}</b></span></div>'
+            f'<div class="dtitle">{_e(d["title"])}</div>{body}'
+            f'<p class="muted dfoot">決まった順（市場→材料の鮮度→時刻→そろった銘柄と計画→Market Radar）で確かめた結果です。'
+            f'検証では費用を超える決まりは見つかっていないので、<b>候補が出ても勝てる根拠ではありません。'
+            f'見送りも正しい判断です。</b></p></section>')
+
+
+def _mr_note(b: Dict, mr: Optional[Dict]) -> str:
+    """Market Radar（24時間先）の見方を、その銘柄の欄に1行で。無い・古いなら書かない。"""
+    if not mr or mr.get("stale"):
+        return ""
+    v = (mr.get("views") or {}).get(b["pair"])
+    if not v:
+        return ""
+    st = (b.get("verdict") or {}).get("state")
+    lean = "up" if st == "aligned_up" else "down" if st == "aligned_down" else None
+    rel = "" if lean is None else ("（ボードと同じ向き）" if v["lean"] == lean else "（ボードと逆の向き）")
+    return (f'<div class="lvnote mr"><b>Market Radar・{_e(mr.get("horizon"))}</b>：'
+            f'{"▲ 上" if v["lean"] == "up" else "▼ 下"}・確信度 {v["confidence"] * 100:.0f}%'
+            f'・{"シグナルあり" if v["signal"] else _e(v.get("status") or "見送り")}{rel}'
+            f'<span class="muted">　期間がこのボード（01:00 まで）より長い別アプリの予測。配信後の的中は約54%。</span></div>')
+
+
 def _health_bar(items: Optional[List[Dict]]) -> str:
     """仕組みの不調があれば、ページの一番上に赤い帯で出す（無ければ何も出さない）。"""
     bad = [x for x in items or [] if x.get("state") == "warn"]
@@ -803,7 +847,7 @@ grid-template-columns:repeat(12,minmax(0,1fr));max-width:1500px;margin:0 auto}
 .panel{grid-column:span 12;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
 @media (min-width:1300px){.pair{grid-column:span 4!important}}
 @media (min-width:980px){.pair{grid-column:span 6}.matrix,.gauges{grid-column:span 6}.planbox{grid-column:span 12}
-.tape{grid-column:span 12}.verify{grid-column:span 12}.score,.feed,.events{grid-column:span 4}}
+.tape{grid-column:span 12}.decision{grid-column:span 12}.verify{grid-column:span 12}.score,.feed,.events{grid-column:span 4}}
 .ph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .ph h2{margin:0;font:700 12.5px var(--mono);letter-spacing:.1em;color:#a9bbd3}
 .chip{font:700 12px var(--mono);padding:2px 9px;border-radius:4px;border:1px solid var(--line2);white-space:nowrap}
@@ -865,6 +909,11 @@ padding:7px 14px;font-size:13px}
 h3.sub{font:700 11.5px var(--mono);letter-spacing:.08em;color:#a9bbd3;margin:12px 0 4px}
 table.health td:nth-child(2){font-weight:700;text-align:center;width:28px}
 .vlist{margin:4px 0;padding-left:18px}.vlist li{margin:3px 0}
+.decision{border-left:4px solid var(--line2)}.decision.go{border-left-color:var(--up)}
+.decision.skip{border-left-color:var(--tx2)}.decision.bad{border-left-color:var(--down)}
+.dtitle{font-size:20px;font-weight:700;margin:2px 0 4px}.decision.go .dtitle{color:var(--up)}
+.dlead{margin:2px 0 6px}.dlist{margin:4px 0 6px;padding-left:18px}.dlist li{margin:4px 0}.dfoot{margin-top:8px}
+.lvnote.mr{border-color:rgba(201,165,255,.35)}
 .plot .lvt.below{transform:translateY(20%)}.plot .dlt{bottom:3px;transform:translateX(-105%);color:var(--wait)}
 .plot .dot{width:7px;height:7px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
 .plot .dot.up{background:var(--up)}.plot .dot.down{background:var(--down)}
@@ -1070,13 +1119,14 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
               if home else '')
            + '</div></header>')
 
-    # 円建ての3本 → 今日の選び方 → 非円建ての3本
+    # 今日の判断 → 円建ての3本 → 今日の選び方 → 非円建ての3本
     first = [b for b in boards if b.get("group") != "pick"]
     picked = [b for b in boards if b.get("group") == "pick"]
-    panels = "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy")) for b in first)
+    panels = _decision((extras or {}).get("decision"))
+    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy"), (extras or {}).get("mr")) for b in first)
     if extras and extras.get("pick"):
         panels += _pick(extras["pick"])
-    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy")) for b in picked)
+    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy"), (extras or {}).get("mr")) for b in picked)
     if not boards:
         panels = '<section class="panel"><p class="muted">ボードがありません。</p></section>'
     if boards:

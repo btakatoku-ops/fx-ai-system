@@ -307,6 +307,52 @@ def dxy_state(now: datetime, drivers_dir=None, replay_dir=None) -> Optional[Dict
     return out
 
 
+MR_STALE_HOURS = 6               # Market Radar は2時間ごと・PC へは毎時。6時間より古ければ「古い」
+
+
+def market_radar(now: datetime, path=None) -> Optional[Dict]:
+    """Market Radar（別アプリ）の FX の予測を読む（2026-10-19、利用者の指定）。
+
+    二つのアプリが別々の銘柄に別々の答えを出し、並べて見る手段が無かった。Market Radar の
+    公開データは PC に毎時取り込まれている（ops/market-radar の pull）ので、その写しを読む。
+    **期間が違う**：Market Radar は「翌営業日まで（24時間先、日足）」、このボードは「その日の 01:00 まで」。
+    確信度は Market Radar の閾値（56%）で「シグナルあり／見送り」を分ける（Market Radar の画面と同じ）。"""
+    import json as _json
+    from pathlib import Path as _P
+
+    from .config import PROJECT_ROOT
+
+    p = _P(path) if path else PROJECT_ROOT.parent / "market-radar" / "public" / "data" / "latest.json"
+    try:
+        d = _json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    try:
+        gen = datetime.fromisoformat(str(d.get("generated_at")).replace("Z", "+00:00"))
+        if gen.tzinfo is None:
+            gen = gen.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        gen = None
+    conf_min = float(d.get("fx_min_confidence") or 0.56)
+    views = {}
+    for s in ((d.get("fx") or {}).get("signals") or []):
+        pair = str(s.get("key", "")).replace("=X", "")
+        sign = s.get("dir_sign")
+        if not pair or sign not in (1, -1):
+            continue
+        conf = float(s.get("confidence") or 0)
+        # Market Radar 自身の「建てられるか」（確信度に加え、基準の値段から離れすぎていないか等）に従う
+        ok = bool(s["tradeable"]) if "tradeable" in s else conf >= conf_min
+        views[pair] = {"lean": "up" if sign == 1 else "down", "confidence": conf,
+                       "signal": ok and not d.get("fx_halted") and not d.get("fx_closed"),
+                       "status": s.get("status")}
+    return {"generated_at": gen.isoformat() if gen else None,
+            "stale": gen is None or (now - gen) > timedelta(hours=MR_STALE_HOURS),
+            "closed": bool(d.get("fx_closed")), "halted": bool(d.get("fx_halted")),
+            "conf_min": conf_min, "horizon": d.get("horizon_fx_label") or "24時間（翌営業日）",
+            "views": views}
+
+
 def verify_state(replay_dir=None) -> Optional[Dict]:
     """測った結果のまとめ（毎週土曜の検証の最新）。**飾らずに、そのまま出す。**
 
@@ -370,6 +416,7 @@ def collect(cfg: TradingConfig, provider, boards: List[Dict], now: datetime,
         from . import health
         out["health"] = health.check(now)
         out["verify"] = verify_state()
+        out["mr"] = market_radar(now)
     except Exception as exc:                     # noqa: BLE001
         log.warning("健康診断ができません: %s", exc)
     for b in boards:
