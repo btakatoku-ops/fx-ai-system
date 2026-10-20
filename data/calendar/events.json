@@ -3,7 +3,7 @@
  "feeds": [
   "this_week"
  ],
- "fetched_at": "2026-10-18T23:43:18.095203+00:00",
+ "fetched_at": "2026-10-19T23:42:47.514061+00:00",
  "count": 86,
  "events": [
   {
@@ -83,12 +83,6 @@
    "currency": "JPY",
    "impact": "Low",
    "at": "2026-10-19T04:30:00+00:00"
-  },
-  {
-   "title": "Foreign Direct Investment ytd/y",
-   "currency": "CNY",
-   "impact": "Low",
-   "at": "2026-10-19T06:02:00+00:00"
   },
   {
    "title": "CPI m/m",
@@ -185,6 +179,12 @@
    "currency": "EUR",
    "impact": "Low",
    "at": "2026-10-20T09:00:00+00:00"
+  },
+  {
+   "title": "Foreign Direct Investment ytd/y",
+   "currency": "CNY",
+   "impact": "Low",
+   "at": "2026-10-20T09:10:00+00:00"
   },
   {
    "title": "10-y Bond Auction",
