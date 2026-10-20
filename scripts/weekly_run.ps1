@@ -32,7 +32,11 @@ $steps = @(
     @("指標の候補", @("scripts/signal_lab.py")),
     @("長い足の取り直し", @("scripts/fetch_long.py")),
     @("長い相関の材料", @("scripts/fetch_drivers.py", "--out", "data/long", "--range", "730d")),
-    @("約2年の検証", @("scripts/long_lab.py"))
+    @("約2年の検証", @("scripts/long_lab.py")),
+    # 勝率だけを測る（利確＝損切り・費用なし。根拠が無ければ50%）2026-10-20 追加
+    @("勝率の検証", @("scripts/win_lab.py")),
+    @("勝率の M15 確認", @("scripts/win_check_m15.py")),
+    @("押し目・戻りの費用込み", @("scripts/win_cost.py"))
 )
 foreach ($step in $steps) {
     $t = Get-Date

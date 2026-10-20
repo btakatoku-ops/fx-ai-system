@@ -432,7 +432,8 @@ def _chip(state: str, label: str) -> str:
     return f'<span class="chip {c}">{_STATE_MARK.get(state, "■")} {_e(label)}</span>'
 
 
-def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None, mr: Optional[Dict] = None) -> str:
+def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None, mr: Optional[Dict] = None,
+                pb: Optional[Dict] = None, pb_stats: Optional[Dict] = None) -> str:
     f, v, d = b["facts"], b["verdict"], b.get("digits", 3)
     st = v.get("state", "mixed")
     chg = f.get("today_change_pct")
@@ -474,7 +475,7 @@ def _pair_panel(b: Dict, ch: Optional[Dict], dxy: Optional[Dict] = None, mr: Opt
     facts.append("指標 " + (f'<b>{_e(f["next_event"])}</b>' if f.get("next_event")
                            else f'<span class="muted">{_e(f.get("event_note") or "—")}</span>'))
     return (f'<section class="panel pair {_STATE_CLASS.get(st, "mixed")}">{head}{price}{note}'
-            f'{_chart(b, ch)}{_vol_note(ch)}{_mr_note(b, mr)}{_dxy_note(b, dxy)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
+            f'{_chart(b, ch)}{_pb_note(b, pb, pb_stats)}{_vol_note(ch)}{_mr_note(b, mr)}{_dxy_note(b, dxy)}{_tp_note(b)}{_fib_note(b, ch)}<div class="fs">{"".join(cells)}</div>{reasons}'
             f'<ul class="facts">{"".join(f"<li>{x}</li>" for x in facts)}</ul></section>')
 
 
@@ -741,6 +742,59 @@ def _decision(d: Optional[Dict]) -> str:
             f'見送りも正しい判断です。</b></p></section>')
 
 
+def _pb_note(b: Dict, pb: Optional[Dict], st: Optional[Dict]) -> str:
+    """押し目・戻り（日足の流れ＋1時間足の RSI）。**参考・測定中**（判定・今日の判断には入れない）。
+
+    勝率だけを測る検証で唯一 50% を上回った決まり。ただし円がらみでは効いていないので、そう書く。"""
+    if not pb:
+        return ""
+    lean, daily, r = pb.get("lean"), pb.get("daily"), pb.get("rsi")
+    from .win_lab import PULLBACK_RSI as lim
+    rs = "—" if r is None else f"{r:.0f}"
+    if lean == "up":
+        head, cls = f'<b class="n up">▲ 押し目買いの場面</b>：日足は上の流れ、1時間足の RSI {rs}（{lim}以下）', "up"
+    elif lean == "down":
+        head, cls = f'<b class="n down">▼ 戻り売りの場面</b>：日足は下の流れ、1時間足の RSI {rs}（{100 - lim}以上）', "down"
+    elif daily == "up":
+        head, cls = f'今は当てはまりません：日足は上の流れ、1時間足の RSI {rs}（押し目＝{lim}以下）', "mid"
+    elif daily == "down":
+        head, cls = f'今は当てはまりません：日足は下の流れ、1時間足の RSI {rs}（戻り＝{100 - lim}以上）', "mid"
+    else:
+        head, cls = "今は当てはまりません：日足の流れがはっきりしません（20日線の向きと位置が食い違い）", "mid"
+    rel = ""
+    st_b = (b.get("verdict") or {}).get("state")
+    if lean and st_b in ("aligned_up", "aligned_down"):
+        same = (lean == "up") == (st_b == "aligned_up")
+        rel = "（ボードの「そろった」と同じ向き）" if same else "（ボードの「そろった」と逆の向き）"
+    stale = (f'<span class="warnword">（最後の1時間足が{_jst(pb.get("last_at"), "%m/%d %H:%M")}で古い）</span>'
+             if pb.get("stale") else "")
+    key = "jpy" if pb.get("jpy") else "other"
+    grp = "円がらみ" if key == "jpy" else "円以外"
+    stats = ""
+    lg, m = (st or {}).get("long") or {}, (st or {}).get("m15") or {}
+    if lg.get(key):
+        g = lg[key]
+        works = (g["a"] or 0) > 0.5 and (g["b"] or 0) > 0.5 and (g.get("b_lo") or 0) > 0.5
+        mm = (f'、直近（{_e(m["first"])}〜{_e(m["last"])}）の M15・計画と同じ幅で '
+              f'{m[key]["win"] * 100:.0f}%（{m[key]["n"]}件）') if m.get(key) else ""
+        stats = (f'<br><span class="{"muted" if works else "warnword"}">過去の勝率（{grp}・利確＝損切り・費用なし、'
+                 f'根拠が無ければ50%）：約2年の前半 {g["a"] * 100:.1f}%・後半 {g["b"] * 100:.1f}%{mm}。'
+                 + ("<b>前後とも50%を上回った唯一の決まり</b>。"
+                    if works else "<b>円がらみでは効いていません</b>（50%前後か下回る）。参考にとどめてください。"
+                    if key == "jpy" else "<b>効果が確認できません。</b>")
+                 + '</span>')
+    c = ((st or {}).get("cost") or {}).get(key)
+    if c and c.get("a") is not None and c.get("b") is not None:
+        plus = (c.get("b_hi") or 0) > 0 and (c["a"] or 0) > 0 and (c["b"] or 0) > 0
+        stats += (f'<br><span class="{"muted" if plus else "warnword"}">費用込み（計画と同じ形・利確1.5倍）：'
+                  f'前半 {c["a"]:+.2f}R・後半 {c["b"]:+.2f}R（同じ時刻にでたらめに建てると {c["a0"]:+.2f}R・{c["b0"]:+.2f}R）。'
+                  + ("前後ともプラス。" if plus else "<b>負けは減りますが、費用を超えていません。</b>")
+                  + '</span>')
+    return (f'<div class="lvnote pb {cls}"><b>押し目・戻り</b>（日足の流れ＋1時間足の RSI）{rel}{stale}<br>{head}'
+            f'<br><span class="muted">参考・測定中。ボードの判定（そろう・除外）と今日の判断には入れていません。'
+            f'検証は東京9時・ロンドン・NY の始まりで測ったもの。毎週土曜に測り直します。</span>{stats}</div>')
+
+
 def _mr_note(b: Dict, mr: Optional[Dict]) -> str:
     """Market Radar（24時間先）の見方を、その銘柄の欄に1行で。無い・古いなら書かない。"""
     if not mr or mr.get("stale"):
@@ -914,6 +968,7 @@ table.health td:nth-child(2){font-weight:700;text-align:center;width:28px}
 .dtitle{font-size:20px;font-weight:700;margin:2px 0 4px}.decision.go .dtitle{color:var(--up)}
 .dlead{margin:2px 0 6px}.dlist{margin:4px 0 6px;padding-left:18px}.dlist li{margin:4px 0}.dfoot{margin-top:8px}
 .lvnote.mr{border-color:rgba(201,165,255,.35)}
+.lvnote.pb.up{border-color:rgba(47,212,126,.55)}.lvnote.pb.down{border-color:rgba(242,85,90,.55)}
 .plot .lvt.below{transform:translateY(20%)}.plot .dlt{bottom:3px;transform:translateX(-105%);color:var(--wait)}
 .plot .dot{width:7px;height:7px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
 .plot .dot.up{background:var(--up)}.plot .dot.down{background:var(--down)}
@@ -1123,10 +1178,14 @@ def render(boards: List[Dict], generated_at: Optional[datetime] = None,
     first = [b for b in boards if b.get("group") != "pick"]
     picked = [b for b in boards if b.get("group") == "pick"]
     panels = _decision((extras or {}).get("decision"))
-    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy"), (extras or {}).get("mr")) for b in first)
+    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy"), (extras or {}).get("mr"),
+                                  ((extras or {}).get("pullback") or {}).get(b["pair"]),
+                                  (extras or {}).get("pullback_stats")) for b in first)
     if extras and extras.get("pick"):
         panels += _pick(extras["pick"])
-    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy"), (extras or {}).get("mr")) for b in picked)
+    panels += "".join(_pair_panel(b, charts.get(b["pair"]), (extras or {}).get("dxy"), (extras or {}).get("mr"),
+                                  ((extras or {}).get("pullback") or {}).get(b["pair"]),
+                                  (extras or {}).get("pullback_stats")) for b in picked)
     if not boards:
         panels = '<section class="panel"><p class="muted">ボードがありません。</p></section>'
     if boards:

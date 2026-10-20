@@ -419,6 +419,14 @@ def collect(cfg: TradingConfig, provider, boards: List[Dict], now: datetime,
         out["mr"] = market_radar(now)
     except Exception as exc:                     # noqa: BLE001
         log.warning("健康診断ができません: %s", exc)
+    # 押し目・戻り（参考・測定中。2026-10-20 の勝率の検証で唯一 50% を上回った決まり）
+    try:
+        from . import pullback
+        from .config import PROJECT_ROOT
+        out["pullback"] = {b["pair"]: pullback.state(provider, b["pair"], now) for b in boards}
+        out["pullback_stats"] = pullback.stats(PROJECT_ROOT / "logs" / "replay")
+    except Exception as exc:                     # noqa: BLE001
+        log.warning("押し目・戻りを出せません: %s", exc)
     for b in boards:
         try:
             ch = chart(cfg, provider, b["pair"], b.get("facts") or {})
